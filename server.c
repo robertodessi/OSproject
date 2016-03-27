@@ -11,10 +11,10 @@
 
 #define GENERIC_ERROR_HELPER(cond, errCode, msg)     do {           	\
         if (cond) {                                                 	\
-            fprintf(stderr, "%s: %s\n", msg, strerror(errCode));		\
-            time_t mytime;												\
-			mytime = time(NULL);										\
-            logMsg(file, ctime(&mytime), msg);							\
+            fprintf(stderr, "%s: %s\n", msg, strerror(errCode));	\
+            time_t mytime;						\
+            mytime = time(NULL);                                        \
+            logMsg(file, ctime(&mytime), msg);				\
             exit(EXIT_FAILURE);                                     	\
         }                                                           	\
     } while(0)
@@ -26,90 +26,92 @@
 
 #define DEBUG 0
 
-//	file descriptor for server log
+//  file descriptor for server log
 int file;
 
 //====================================
 //			MAIN
 //====================================
-int main(int argc, char *argv[]){
-	
-	//	socekt descriptor
-	int  sock_desc;
 
-	//	error check descriptor 
-	int ret;
+int main(int argc, char *argv[]) {
 
-	if((file = open(NOME_FILE,O_WRONLY|O_CREAT|O_APPEND,0666)) == -1){
-		fprintf(stderr, "Errore apertura file di log\n");
-		exit(EXIT_FAILURE);
-	}
-	
-	//	cancella tutto il file di log
-	if(DEBUG){
-		ret = remove(NOME_FILE);
-		ERROR_HELPER(ret,"Errore cancellazione file");
-	}
+    //	socekt descriptor
+    int sock_desc;
 
-	//	getting current time and date
-	time_t mytime;
-	mytime = time(NULL);	
+    //	error check descriptor 
+    int ret;
 
-	//	gestione segnali
-	sigset_t maschera;
+    if ((file = open(NOME_FILE, O_WRONLY | O_CREAT | O_APPEND, 0666)) == -1) {
+        fprintf(stderr, "Errore apertura file di log\n");
+        exit(EXIT_FAILURE);
+    }
 
-	ret = sigfillset(&maschera);
-	ERROR_HELPER(ret,"Errore nella sigfillset\n\n");
-	
-	ret = sigdelset(&maschera,SIGTERM);
-	ERROR_HELPER(ret,"Errore nella sigdelset(SIGTERM)\n\n");
+    //	cancella tutto il file di log
+    if (DEBUG) {
+        ret = remove(NOME_FILE);
+        ERROR_HELPER(ret, "Errore cancellazione file");
+    }
 
-	ret = sigdelset(&maschera,SIGINT);
-	ERROR_HELPER(ret,"Errore nella sigdelset(SIGINT)\n\n");
-		
-	ret = sigdelset(&maschera,SIGQUIT);
-	ERROR_HELPER(ret,"Errore nella sigdelset(SIGQUIT)\n\n");
+    //	getting current time and date
+    time_t mytime;
+    mytime = time(NULL);
 
-	ret = sigdelset(&maschera,SIGHUP);
-	ERROR_HELPER(ret,"Errore nella sigdelset(SIGHUP)\n\n");
+    //	gestione segnali
+    sigset_t maschera;
 
-	ret = sigdelset(&maschera,SIGPIPE);
-	ERROR_HELPER(ret,"Errore nella sigdelset(SIGPIPE)\n\n");
+    /*
+    ret = sigfillset(&maschera);
+    ERROR_HELPER(ret, "Errore nella sigfillset\n\n");
 
-	ret = sigdelset(&maschera,SIGALRM);
-	ERROR_HELPER(ret,"Errore nella sigdelset(SIGALRM)\n\n");
+    ret = sigdelset(&maschera, SIGTERM);
+    ERROR_HELPER(ret, "Errore nella sigdelset(SIGTERM)\n\n");
 
-	ret = sigprocmask(SIG_BLOCK, &maschera, NULL);
-	ERROR_HELPER(ret,"Errore nella sigprocmask\n\n");
+    ret = sigdelset(&maschera, SIGINT);
+    ERROR_HELPER(ret, "Errore nella sigdelset(SIGINT)\n\n");
 
-	gestione_segnali(SIGTERM,gestione_chiusura,0);
-	gestione_segnali(SIGINT,gestione_chiusura,0);
-	gestione_segnali(SIGQUIT,gestione_chiusura,0);
-	gestione_segnali(SIGHUP,gestione_chiusura,0);
-	gestione_segnali(SIGPIPE,gestione_chiusura_inattiva,0);
-	gestione_segnali(SIGALRM,gestione_timer,0);
-	
+    ret = sigdelset(&maschera, SIGQUIT);
+    ERROR_HELPER(ret, "Errore nella sigdelset(SIGQUIT)\n\n");
 
-	logMsg(file, ctime(&mytime), "Server started to run\n\n");
+    ret = sigdelset(&maschera, SIGHUP);
+    ERROR_HELPER(ret, "Errore nella sigdelset(SIGHUP)\n\n");
 
-	sock_desc = socket(AF_INET,SOCK_STREAM,0);
-	sock_desc = -1;
-	ERROR_HELPER(sock_desc, "Errore creazione socket\n\n");
+    ret = sigdelset(&maschera, SIGPIPE);
+    ERROR_HELPER(ret, "Errore nella sigdelset(SIGPIPE)\n\n");
 
-	return 0;
+    ret = sigdelset(&maschera, SIGALRM);
+    ERROR_HELPER(ret, "Errore nella sigdelset(SIGALRM)\n\n");
+
+    ret = sigprocmask(SIG_BLOCK, &maschera, NULL);
+    ERROR_HELPER(ret, "Errore nella sigprocmask\n\n");
+
+    gestione_segnali(SIGTERM, gestione_chiusura, 0);
+    gestione_segnali(SIGINT, gestione_chiusura, 0);
+    gestione_segnali(SIGQUIT, gestione_chiusura, 0);
+    gestione_segnali(SIGHUP, gestione_chiusura, 0);
+    gestione_segnali(SIGPIPE, gestione_chiusura_inattiva, 0);
+    gestione_segnali(SIGALRM, gestione_timer, 0);
+     */
+
+    logMsg(file, ctime(&mytime), "Server started to run\n\n");
+
+    sock_desc = socket(AF_INET, SOCK_STREAM, 0);
+    sock_desc = -1;
+    ERROR_HELPER(sock_desc, "Errore creazione socket\n\n");
+
+    return 0;
 }
 
 //====================================
 //			LOG WRITER
 //====================================
-int logMsg(int fd, char* date, char* toWrite){
 
-	int ret;
-	
-	ret = write(fd, date, strlen(date));
-	ret |= write(fd,toWrite,strlen(toWrite));
-	ERROR_HELPER(ret, "Errore scrittura operazione server su file\n\n");
+int logMsg(int fd, char* date, char* toWrite) {
 
-	return ret;
+    int ret;
+
+    ret = write(fd, date, strlen(date));
+    ret |= write(fd, toWrite, strlen(toWrite));
+    ERROR_HELPER(ret, "Errore scrittura operazione server su file\n\n");
+
+    return ret;
 }
-	
