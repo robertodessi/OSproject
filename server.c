@@ -22,7 +22,7 @@
 
 int main(int argc, char *argv[]) {
 	
-	//	error check descriptor 
+    //	error check descriptor 
     int ret;
 
     //	socekt descriptor
@@ -69,17 +69,17 @@ int main(int argc, char *argv[]) {
     
     //Presentation
     printf("Server: Welcome by ChatApp!\n");
-	printf("CRT+C to kill your Server\n");
+    printf("CRT+C to kill your Server\n");
     
     if(DEBUG) resetLog(); //resetto il file di log
     logMsg("Server started to run");
 
-	// initialize socket for listening
+    // initialize socket for listening
     socket_desc = socket(AF_INET, SOCK_STREAM, 0);
     //socket_desc = -1;
     ERROR_HELPER(socket_desc, "Errore creazione socket\n\n");
 	
-	server_addr.sin_addr.s_addr = INADDR_ANY; // we want to accept connections from any interface
+    server_addr.sin_addr.s_addr = INADDR_ANY; // we want to accept connections from any interface
     server_addr.sin_family      = AF_INET;
     server_addr.sin_port        = htons(SERVER_PORT); // don't forget about network byte order!
     
@@ -160,6 +160,7 @@ int main(int argc, char *argv[]) {
      *
      * On success, select() returns the number of descriptors in the
      * given sets for which data may be available, or 0 if the timeout
-     * expires before any event occurs. */
+     * expires before any event occurs. 
+     */
      
     
