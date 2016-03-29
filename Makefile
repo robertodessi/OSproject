@@ -9,7 +9,8 @@ server: server.c common.h log.h log.c
 	
 client_prova: client_prova.c common.h 
 	$(CC) -o client_prova client_prova.c log.c $(LDFLAGS)
-
+run:
+	./server
 
 :phony
 clean:
