@@ -9,8 +9,7 @@
 #include <arpa/inet.h>  // htons()
 #include <unistd.h> //fork()
 
-#include <fcntl.h>// serve per le opzioni di apertura del file
-#include <time.h>//per giorno e data correnti
+
 
 
 //#define PTHREAD_ERROR_HELPER(ret, msg)  GENERIC_ERROR_HELPER((ret != 0), ret, msg)
