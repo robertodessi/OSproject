@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
     
     //Presentation
     printf("Server: Welcome by ChatApp!\n");
-	printf("CRT+C to kill your black Server\n");
+	printf("CRT+C to kill your Server\n");
     
     if(DEBUG) resetLog(); //resetto il file di log
     logMsg("Server started to run");
