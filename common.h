@@ -1,6 +1,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>//warning strlen strcat
 #include <errno.h>//per poter leggere il valore di errno
 #include <time.h>//per giorno e data correnti
@@ -22,6 +24,7 @@
 #define SERVER_ADDRESS  "127.0.0.1"
 #define SERVER_COMMAND  "QUIT"
 #define SERVER_PORT     2016
+
 
 #endif
 

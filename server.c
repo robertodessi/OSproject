@@ -1,5 +1,6 @@
 #include "common.h"
 #include "log.h"
+#include "channel.h"
 
 #include <stdio.h>//printf
 #include <stdlib.h>//warning exit
@@ -8,6 +9,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>  // htons()
 #include <unistd.h> //fork()
+#include <pthread.h>
 
 
 
@@ -116,31 +118,24 @@ int main(int argc, char *argv[]) {
          * se vuole unirsi ad uno esistente dobbiamo inviare un messaggio al processo del canale (codice non presente)
          * */
 
-        pid_t pid = fork();
-        if (pid == -1) {
-            ERROR_HELPER(-1, "Cannot fork server process to handle the request");
-        } else if (pid == 0) {
-            // child: close the listening socket and process the request
-            ret = close(socket_desc);
-            ERROR_HELPER(ret, "Cannot close listening socket in child process");
+        pthread_t thread;
 
-            //connection_handler(client_desc, client_addr);
-            //
+        // put arguments for the new thread into a buffer
+        handler_args_t* thread_args = malloc(sizeof(handler_args_t));
+        thread_args->socket_desc = client_desc;
+        thread_args->client_addr = client_addr;
 
-            if (DEBUG) fprintf(stderr, "Process created to handle the request has completed.\n");
-
-            free(client_addr);
-            exit(EXIT_SUCCESS);
-        } else {
-            // server: close the incoming socket and continue
-            ret = close(client_desc);
-            ERROR_HELPER(ret, "Cannot close incoming socket in main process");
-
-            if (DEBUG) fprintf(stderr, "Child process created to handle the request!\n");
-
-            // reset fields in client_addr
-            memset(client_addr, 0, sizeof(struct sockaddr_in));
+        if (pthread_create(&thread, NULL, connection_handler, (void*)thread_args) != 0) {
+            fprintf(stderr, "Can't create a new thread, error %d\n", errno);
+            exit(EXIT_FAILURE);
         }
+
+        if (DEBUG) fprintf(stderr, "New thread created to handle the request!\n");
+
+        pthread_detach(thread); // I won't phtread_join() on this thread
+
+        // we can't just reset fields: we need a new buffer for client_addr!
+        client_addr = calloc(1, sizeof(struct sockaddr_in));
     }
 
     exit(EXIT_SUCCESS); // this will never be executed
