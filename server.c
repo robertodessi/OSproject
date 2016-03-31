@@ -13,7 +13,6 @@
 
 
 
-
 //#define PTHREAD_ERROR_HELPER(ret, msg)  GENERIC_ERROR_HELPER((ret != 0), ret, msg)
 
 
@@ -21,6 +20,8 @@
 //====================================
 //			MAIN
 //====================================
+
+
 
 int main(int argc, char *argv[]) {
 	
@@ -73,7 +74,7 @@ int main(int argc, char *argv[]) {
     printf("Server: Welcome by ChatApp!\n");
     printf("CRT+C to kill your Server\n");
     
-    if(DEBUG) resetLog(); //resetto il file di log
+    if(!DEBUG) resetLog(); //resetto il file di log
     logMsg("Server started to run");
 
     // initialize socket for listening
@@ -111,13 +112,9 @@ int main(int argc, char *argv[]) {
         ERROR_HELPER(client_desc, "Cannot open socket for incoming connection");
 
         if (DEBUG) fprintf(stderr, "Incoming connection accepted...\n");
+        logMsg("utente connesso");
         
-        //TODO: fare il controllo tra create or join
-        /**SPIEGAZIONE: quando un client si connette al server invierà 2 tipi di richieste:creare un nuovo canale oppure unirsi ad uno esistente
-         * se vuole creare un nuovo canale con una fork si crea il processo che se ne occupa (il codice sottostante si occupa di questo)
-         * se vuole unirsi ad uno esistente dobbiamo inviare un messaggio al processo del canale (codice non presente)
-         * */
-
+        //creo un thread che controlla tra create or join
         pthread_t thread;
 
         // put arguments for the new thread into a buffer
@@ -125,7 +122,7 @@ int main(int argc, char *argv[]) {
         thread_args->socket_desc = client_desc;
         thread_args->client_addr = client_addr;
 
-        if (pthread_create(&thread, NULL, connection_handler, (void*)thread_args) != 0) {
+        if (pthread_create(&thread, NULL, welcome_handler, (void*)thread_args) != 0) {
             fprintf(stderr, "Can't create a new thread, error %d\n", errno);
             exit(EXIT_FAILURE);
         }

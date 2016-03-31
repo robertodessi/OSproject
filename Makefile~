@@ -14,4 +14,4 @@ run:
 
 :phony
 clean:
-	rm -f server
+	rm -f server client_prova

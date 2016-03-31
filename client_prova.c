@@ -32,9 +32,9 @@ int main(int argc, char* argv[]) {
     if (DEBUG) fprintf(stderr, "Connection established!\n");
 
     char buf[1024];
-    size_t buf_len = sizeof(buf);
-    size_t msg_len;
-
+    size_t buf_len;
+    
+/*
     // display welcome message from server
     while ( (msg_len = recv(socket_desc, buf, buf_len - 1, 0)) < 0 ) {
         if (errno == EINTR) continue;
@@ -42,6 +42,14 @@ int main(int argc, char* argv[]) {
     }
     buf[msg_len] = '\0';
     printf("%s", buf);
+  */  
+	printf("CREATE or JOIN <name_channel>\nsend: ");
+    scanf("%s",buf);
+    buf_len = strlen(buf);
+     while ( (ret = send(socket_desc, buf, buf_len, 0)) < 0 ) {
+            if (errno == EINTR) continue;
+            ERROR_HELPER(-1, "Cannot write to the socket");
+        }
 
     
 

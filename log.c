@@ -20,7 +20,7 @@ void logMsg(char* toWrite) {
 
     int ret;
     
-    file = fopen(NOME_FILE,"w"); 
+    file = fopen(NOME_FILE,"a"); 
     if(file==NULL)ret=-1; else ret=0;
 	ERROR_HELPER(ret,"Errore apertura file log.txt");
 	
