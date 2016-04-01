@@ -31,5 +31,9 @@
 # Txt files
 *.txt
 
+#Weird stuff
+*.log
+*.xml
+
 # Debug files
 *.dSYM/
