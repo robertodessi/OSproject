@@ -30,6 +30,7 @@
 
 # Txt files
 *.txt
+*.txt~
 
 #Weird stuff
 *.log
