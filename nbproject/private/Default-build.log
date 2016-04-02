@@ -1,2 +1,0 @@
-gcc -Wall -O1 -g -o server server.c log.c -lpthread
-gcc -Wall -O1 -g -o client_prova client_prova.c log.c -lpthread
