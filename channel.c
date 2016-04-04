@@ -31,7 +31,9 @@ void* welcome_handler(void* arg) {
     
     //per ora faccio solo una stampa
 	if(DEBUG) printChannel(args -> channel); //stampa di debug del canale
+	/** TODO: ricevere i messaggi scritti dal client ed inoltrarli a tutti gli altri client connessi nel canale*/
 	
+	/** TODO: gestire la ricezione di comandi (distinguendoli dai messaggi normali): QUIT, DELETE CHANNEL**/
 	
     // close socket
     ret = close(args->socket_desc);

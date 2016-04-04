@@ -37,18 +37,26 @@ int main(int argc, char *argv[]) {
     
     //array che rappresenta la lista di tutti i canali
 	channel_struct* channel_list=(channel_struct*)malloc(0);
-	int num_channel=0; //numero di canali presenti
-	//array di semafori, uno per ogni canale
+	
+	//numero di canali presenti
+	int num_channel=0; 
+	
+	//array di semafori, uno per ogni canale	
 	sem_t* sem=(sem_t*)malloc(0);
+	
     
     /**COMMAND**/
+    
 	//CREATE
     char* create_command = CREATE_COMMAND;
     size_t create_command_len = strlen(create_command);
+    
     //JOIN
     char* join_command = JOIN_COMMAND;
     size_t join_command_len = strlen(join_command);
+    
 	/**END_COMMAND **/
+	
 	
 	int recv_bytes;
 
@@ -95,7 +103,7 @@ int main(int argc, char *argv[]) {
     printf("Server: Welcome by ChatApp!\n");
     printf("CRT+C to kill your Server\n");
     
-    if(!DEBUG) resetLog(); //resetto il file di log
+    resetLog(); //resetto il file di log
     logMsg("Server started to run");
 
     // initialize socket for listening
@@ -140,6 +148,8 @@ int main(int argc, char *argv[]) {
 			if (errno == EINTR) continue;
 			ERROR_HELPER(-1, "Cannot read from socket");
 		}
+		
+		/**TODO: gestire il log**/
 		// check if create 
 		if (recv_bytes == create_command_len && !memcmp(buf, create_command, create_command_len)){
 			if(DEBUG) printf("create new channel\n");
@@ -151,10 +161,16 @@ int main(int argc, char *argv[]) {
 			channel_list[num_channel-1] . client_desc[0]=client_desc; //aggiungo il proprietario ai client connessi al canale
 			channel_list[num_channel-1] . owner=client_desc; //setto il proprietario
 			channel_list[num_channel-1] . id=0; //setto un id al canale. Per ora a tutti zero 
-			
+			/**TODO: decidere come gestire gli id dei canali**/
+			/* IDEA!
+			 *  id=posizione nell'array channel_list
+			 * 
+			 */
+			 
 			//creo il semaforo per il canale
 			sem=(sem_t*)realloc(sem,sizeof(sem_t)*(num_channel));
 			
+			/**TODO: inizializzare il semaforo e aprirlo**/
 			
 			//creo il thread che gestirà il client da ora in avanti
 			pthread_t thread;
@@ -184,6 +200,8 @@ int main(int argc, char *argv[]) {
 			/**TODO: join al canale**/
 			
 		}
+		
+		/**TODO: gestire altri comandi (e.g. SHOW ALL CHANNEL)**/
 		
         // we can't just reset fields: we need a new buffer for client_addr!
 		client_addr = calloc(1, sizeof(struct sockaddr_in));
