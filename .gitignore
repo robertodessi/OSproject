@@ -38,3 +38,10 @@
 
 # Debug files
 *.dSYM/
+
+#Netbeans
+nbproject
+
+#Binary
+*client_prova
+*server

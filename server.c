@@ -8,12 +8,11 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>  // htons()
-#include <unistd.h> //fork()
+#include <unistd.h> 
 #include <pthread.h>
+#include <semaphore.h>
 
 
-
-//#define PTHREAD_ERROR_HELPER(ret, msg)  GENERIC_ERROR_HELPER((ret != 0), ret, msg)
 
 
 
@@ -36,6 +35,36 @@ int main(int argc, char *argv[]) {
 
     int sockaddr_len = sizeof(struct sockaddr_in); // we will reuse it for accept()
     
+    //array che rappresenta la lista di tutti i canali
+	channel_struct* channel_list=(channel_struct*)malloc(0);
+	
+	//numero di canali presenti
+	int num_channel=0; 
+	
+	//array di semafori, uno per ogni canale	
+	sem_t* sem=(sem_t*)malloc(0);
+	
+    
+    /**COMMAND**/
+    
+	//CREATE
+    char* create_command = CREATE_COMMAND;
+    size_t create_command_len = strlen(create_command);
+    
+    //JOIN
+    char* join_command = JOIN_COMMAND;
+    size_t join_command_len = strlen(join_command);
+    
+	/**END_COMMAND **/
+	
+	
+	int recv_bytes;
+
+    char buf[1024];
+    size_t buf_len = sizeof(buf);
+    
+    
+      
 
     /*
     ret = sigfillset(&maschera);
@@ -74,7 +103,7 @@ int main(int argc, char *argv[]) {
     printf("Server: Welcome by ChatApp!\n");
     printf("CRT+C to kill your Server\n");
     
-    if(!DEBUG) resetLog(); //resetto il file di log
+    resetLog(); //resetto il file di log
     logMsg("Server started to run");
 
     // initialize socket for listening
@@ -114,25 +143,69 @@ int main(int argc, char *argv[]) {
         if (DEBUG) fprintf(stderr, "Incoming connection accepted...\n");
         logMsg("utente connesso");
         
-        //creo un thread che controlla tra create or join
-        pthread_t thread;
+        // read message from client
+		while ( (recv_bytes = recv(client_desc, buf, buf_len, 0)) < 0 ) {
+			if (errno == EINTR) continue;
+			ERROR_HELPER(-1, "Cannot read from socket");
+		}
+		
+		/**TODO: gestire il log**/
+		// check if create 
+		if (recv_bytes == create_command_len && !memcmp(buf, create_command, create_command_len)){
+			if(DEBUG) printf("create new channel\n");
+			
+			//creo un nuovo canale e setto la struttura dati che lo rappresenta
+			channel_list=(channel_struct*)realloc(channel_list,sizeof(channel_struct)*(++num_channel));
+			channel_list[num_channel-1] . dim=1;  //quando si crea il canale c'è solo il proprietario
+			channel_list[num_channel-1] . client_desc=(int*)malloc(sizeof(int)); //allocazione dinamica
+			channel_list[num_channel-1] . client_desc[0]=client_desc; //aggiungo il proprietario ai client connessi al canale
+			channel_list[num_channel-1] . owner=client_desc; //setto il proprietario
+			channel_list[num_channel-1] . id=0; //setto un id al canale. Per ora a tutti zero 
+			/**TODO: decidere come gestire gli id dei canali**/
+			/* IDEA!
+			 *  id=posizione nell'array channel_list
+			 * 
+			 */
+			 
+			//creo il semaforo per il canale
+			sem=(sem_t*)realloc(sem,sizeof(sem_t)*(num_channel));
+			
+			/**TODO: inizializzare il semaforo e aprirlo**/
+			
+			//creo il thread che gestirà il client da ora in avanti
+			pthread_t thread;
 
-        // put arguments for the new thread into a buffer
-        handler_args_t* thread_args = malloc(sizeof(handler_args_t));
-        thread_args->socket_desc = client_desc;
-        thread_args->client_addr = client_addr;
+			// put arguments for the new thread into a buffer
+			handler_args_t* thread_args = malloc(sizeof(handler_args_t));
+			thread_args -> socket_desc = client_desc;
+			thread_args -> client_addr = client_addr;
+			thread_args -> sem = &sem[num_channel-1];
+			thread_args -> channel = &channel_list[num_channel-1];
+		   
 
-        if (pthread_create(&thread, NULL, welcome_handler, (void*)thread_args) != 0) {
-            fprintf(stderr, "Can't create a new thread, error %d\n", errno);
-            exit(EXIT_FAILURE);
-        }
+			if (pthread_create(&thread, NULL, welcome_handler, (void*)thread_args) != 0) {
+				fprintf(stderr, "Can't create a new thread, error %d\n", errno);
+				exit(EXIT_FAILURE);
+			}
 
-        if (DEBUG) fprintf(stderr, "New thread created to handle the request!\n");
+			if (DEBUG) fprintf(stderr, "New thread created to handle the request!\n");
 
-        pthread_detach(thread); // I won't phtread_join() on this thread
-
+			pthread_detach(thread); // I won't phtread_join() on this thread			
+			
+		}
+		// check if join
+		if (recv_bytes == join_command_len && !memcmp(buf, join_command, join_command_len)){
+			printf("join canale\n");
+			
+			/**TODO: join al canale**/
+			
+		}
+		
+		/**TODO: gestire altri comandi (e.g. SHOW ALL CHANNEL)**/
+		
         // we can't just reset fields: we need a new buffer for client_addr!
-        client_addr = calloc(1, sizeof(struct sockaddr_in));
+		client_addr = calloc(1, sizeof(struct sockaddr_in));
+        
     }
 
     exit(EXIT_SUCCESS); // this will never be executed
