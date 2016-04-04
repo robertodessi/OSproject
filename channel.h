@@ -1,12 +1,9 @@
 #ifndef CHANNEL_H
 #define CHANNEL_H
 
+#include <semaphore.h> //sem_t
 
-//struttura dati che rappresenta i dati passati al thread che si occupa del canale
-typedef struct handler_args_s {
-    int socket_desc;
-    struct sockaddr_in* client_addr;
-} handler_args_t;
+
 
 //struttura dati che rappresenta il canale
 typedef struct {
@@ -15,6 +12,14 @@ typedef struct {
     int id; //identificatore del canale
     int owner;//descrittore del client creatore del canale
 } channel_struct;
+
+//struttura dati che rappresenta i dati passati al thread che si occupa del canale
+typedef struct handler_args_s {
+    int socket_desc;
+    struct sockaddr_in* client_addr;
+    sem_t* sem;
+    channel_struct* channel;
+} handler_args_t;
 
 
 

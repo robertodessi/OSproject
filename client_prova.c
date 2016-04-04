@@ -25,12 +25,7 @@ int main(int argc, char* argv[]) {
     server_addr.sin_family      = AF_INET;
     server_addr.sin_port        = htons(SERVER_PORT); // don't forget about network byte order!
 
-    // initiate a connection on the socket
-    ret = connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
-    ERROR_HELPER(ret, "Could not create connection");
-
-    if (DEBUG) fprintf(stderr, "Connection established!\n");
-
+   
     char buf[1024];
     size_t buf_len;
     
@@ -46,6 +41,13 @@ int main(int argc, char* argv[]) {
 	printf("CREATE or JOIN <name_channel>\nsend: ");
     scanf("%s",buf);
     buf_len = strlen(buf);
+    
+     // initiate a connection on the socket
+    ret = connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+    ERROR_HELPER(ret, "Could not create connection");
+
+    if (DEBUG) fprintf(stderr, "Connection established!\n");
+
      while ( (ret = send(socket_desc, buf, buf_len, 0)) < 0 ) {
             if (errno == EINTR) continue;
             ERROR_HELPER(-1, "Cannot write to the socket");
