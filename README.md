@@ -9,4 +9,5 @@ Feel free to contact us for any further information at roberto.dessi11@gmail.com
 To compile and launch:
 
 make
+
 make run
