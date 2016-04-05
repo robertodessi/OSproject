@@ -6,6 +6,7 @@
 #include <string.h>//warning strlen strcat
 #include <errno.h>//per poter leggere il valore di errno
 #include <time.h>//per giorno e data correnti
+#include <semaphore.h>
 #include "log.h"
 
 #define GENERIC_ERROR_HELPER(cond, errCode, msg)     do {           	\
@@ -27,7 +28,8 @@
 #define QUIT_COMMAND  "QUIT"
 #define SERVER_PORT     2016
 
-
+//semaforo per channle_list_struct
+sem_t* sem;
 
 #endif
 
