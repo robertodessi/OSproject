@@ -1,7 +1,7 @@
 CC = gcc -Wall -O1 -g
 LDFLAGS = -lpthread
 
-all: server client_prova launcher
+all: server client_prova
 
 
 server: server.c common.h log.h log.c channel.h channel.c
@@ -9,13 +9,9 @@ server: server.c common.h log.h log.c channel.h channel.c
 	
 client_prova: client_prova.c common.h 
 	$(CC) -o client_prova client_prova.c log.c $(LDFLAGS)
-	
-launcher: launcher
-	$(CC) -o launcher launcher.c
-	
 run:
-	./launcher 
+	(./server&) & xterm ./client_prova
 
 :phony
 clean:
-	rm -f server client_prova
+	rm -f server
