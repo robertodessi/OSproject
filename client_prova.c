@@ -38,22 +38,24 @@ int main(int argc, char* argv[]) {
     buf[msg_len] = '\0';
     printf("%s", buf);
   */  
-	printf("CREATE or JOIN <name_channel>\nsend: ");
-    scanf("%s",buf);
-    buf_len = strlen(buf);
-    
-     // initiate a connection on the socket
-    ret = connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
-    ERROR_HELPER(ret, "Could not create connection");
 
-    if (DEBUG) fprintf(stderr, "Connection established!\n");
+	 // initiate a connection on the socket
+	ret = connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+	ERROR_HELPER(ret, "Could not create connection");
+	if (DEBUG) fprintf(stderr, "Connection established!\n");
+	printf("CREATE or JOIN <name_channel>\n");
+	while(1){
+		printf("send: ");
+		ret=scanf("%s",buf);
+		buf_len = strlen(buf);
+		
+		
+		 while ( (ret = send(socket_desc, buf, buf_len, 0)) < 0 ) {
+				if (errno == EINTR) continue;
+				ERROR_HELPER(-1, "Cannot write to the socket");
+		}
 
-     while ( (ret = send(socket_desc, buf, buf_len, 0)) < 0 ) {
-            if (errno == EINTR) continue;
-            ERROR_HELPER(-1, "Cannot write to the socket");
-        }
-
-    
+	}
 
     // close the socket
     ret = close(socket_desc);

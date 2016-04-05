@@ -10,7 +10,7 @@ server: server.c common.h log.h log.c channel.h channel.c
 client_prova: client_prova.c common.h 
 	$(CC) -o client_prova client_prova.c log.c $(LDFLAGS)
 	
-launcher: launcher
+launcher: launcher.c
 	$(CC) -o launcher launcher.c
 	
 run:

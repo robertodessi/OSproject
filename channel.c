@@ -19,6 +19,8 @@ void* connection_handler(void* arg) {
 
     char buf[1024];
     size_t buf_len = sizeof(buf);
+    
+    char msg[1024];
     size_t msg_len;
 
 	
@@ -47,58 +49,60 @@ void* connection_handler(void* arg) {
     char client_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(args->client_addr->sin_addr), client_ip, INET_ADDRSTRLEN);
     uint16_t client_port = ntohs(args->client_addr->sin_port); // port number is an unsigned short
-	
-	// read message from client
-	while ( (recv_bytes = recv(args->socket_desc, buf, buf_len, 0)) < 0 ) {
-		if (errno == EINTR) continue;
-		ERROR_HELPER(-1, "Cannot read from socket");
-	}
-	
-	/** TODO: distinguere dai comandi i messaggi scritti dal client ed inoltrarli a tutti gli altri client connessi nel canale*/
-	
-	/**TODO: fare il log**/
-	
-	// check if create 
-	if (recv_bytes == create_command_len && !memcmp(buf, create_command, create_command_len)){
-		if(DEBUG) printf("create new channel\n");
+    
+    while(1){
 		
-		ret=sem_wait(sem);
-		ERROR_HELPER(ret,"error sem_wait");
+		// read message from client
+		while ( (recv_bytes = recv(args->socket_desc, buf, buf_len, 0)) < 0 ) {
+			if (errno == EINTR) continue;
+			ERROR_HELPER(-1, "Cannot read from socket");
+		}
 		
-		//creo un nuovo canale e setto la struttura dati che lo rappresenta
-		channel_list -> num_channels = channel_list -> num_channels+1; //aumento di 1 il numero di canali
-		channel_list -> channel = (channel_struct*) realloc (channel_list->channel, sizeof(channel_struct)*(channel_list->num_channels));  
+		/** TODO: distinguere dai comandi i messaggi scritti dal client ed inoltrarli a tutti gli altri client connessi nel canale*/
 		
-		my_channel = &channel_list->channel[channel_list -> num_channels-1];  //prendo il mio canale (cioè l'ultimo della lista) e lo copio per comodità
+		/**TODO: fare il log**/
 		
-		my_channel -> dim = 1;  								//quando si crea il canale c'è solo il proprietario
-		my_channel -> client_desc = (int*)malloc(sizeof(int)); 	//allocazione dinamica
-		my_channel -> client_desc[0] = args -> socket_desc; 	//aggiungo il proprietario ai client connessi al canale
-		my_channel -> owner = args -> socket_desc; 				//setto il proprietario
-		my_channel -> id = 0;									//setto un id al canale. Per ora a tutti zero 
-		/**TODO: decidere come gestire gli id dei canali**/
-		/* IDEA!
-		 *  id=posizione nell'array channel_list
-		 * 
-		 */
-		 		
-		//per ora faccio solo una stampa
-		if(DEBUG) printChannel(my_channel); //stampa di debug del canale
-		
-		ret=sem_post(sem);
-		ERROR_HELPER(ret,"error sem_post");
-				
+		// check if create 
+		if (recv_bytes == create_command_len && !memcmp(buf, create_command, create_command_len)){
+			if(DEBUG) printf("create new channel\n");
 			
-	}
-	// check if join
-	if (recv_bytes == join_command_len && !memcmp(buf, join_command, join_command_len)){
-		printf("join canale\n");		
-		/**TODO: join al canale**/
+			ret=sem_wait(sem);
+			ERROR_HELPER(ret,"error sem_wait");
+			
+			//creo un nuovo canale e setto la struttura dati che lo rappresenta
+			channel_list -> num_channels = channel_list -> num_channels+1; //aumento di 1 il numero di canali
+			channel_list -> channel = (channel_struct*) realloc (channel_list->channel, sizeof(channel_struct)*(channel_list->num_channels));  
+			
+			my_channel = &channel_list->channel[channel_list -> num_channels-1];  //prendo il mio canale (cioè l'ultimo della lista) e lo copio per comodità
+			
+			my_channel -> dim = 1;  								//quando si crea il canale c'è solo il proprietario
+			my_channel -> client_desc = (int*)malloc(sizeof(int)); 	//allocazione dinamica
+			my_channel -> client_desc[0] = args -> socket_desc; 	//aggiungo il proprietario ai client connessi al canale
+			my_channel -> owner = args -> socket_desc; 				//setto il proprietario
+			my_channel -> id = 0;									//setto un id al canale. Per ora a tutti zero 
+			/**TODO: decidere come gestire gli id dei canali**/
+			/* IDEA!
+			 *  id=posizione nell'array channel_list
+			 * 
+			 */
+					
+			//per ora faccio solo una stampa
+			if(DEBUG) printChannel(my_channel); //stampa di debug del canale
+			
+			ret=sem_post(sem);
+			ERROR_HELPER(ret,"error sem_post");
+					
+				
+		}
+		// check if join
+		if (recv_bytes == join_command_len && !memcmp(buf, join_command, join_command_len)){
+			printf("join canale\n");		
+			/**TODO: join al canale**/
+			
+		}
 		
+		/**TODO: gestire altri comandi (e.g. QUIT, DELETE, ecc...)**/
 	}
-	
-	/**TODO: gestire altri comandi (e.g. QUIT, DELETE, ecc...)**/
-	
 	
     // close socket
     ret = close(args->socket_desc);
@@ -119,5 +123,5 @@ void printChannel(channel_struct* channel){
 	printf("dimension: %d\n",channel->dim);
 	printf("client_desc: ");
 	for(int i=0;i<channel->dim;i++)printf("%d, ",channel->client_desc[i]);
-	printf("\n");
+	printf("\n\n");
 }
