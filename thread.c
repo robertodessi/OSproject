@@ -112,7 +112,7 @@ void* connection_handler(void* arg) {
 			ERROR_HELPER(ret,"error sem_wait");
 			
 			
-			/**	TODO: **/
+			/**	TODO: aggiungere alla lista canali my_channel**/
 			
 			ret=sem_post(sem);
 			ERROR_HELPER(ret,"error sem_post");
