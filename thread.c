@@ -7,6 +7,12 @@
 #include <arpa/inet.h>  // htons()
 #include <pthread.h>
 #include <unistd.h> //close()
+#include <sys/types.h>
+
+
+//====================================
+//			THREAD
+//====================================
 
 
 void* connection_handler(void* arg) {
@@ -14,7 +20,8 @@ void* connection_handler(void* arg) {
 	channel_list_struct* channel_list = (args->channel_list); //mi salvo la channel_list_struct (per comodità) 
 	channel_struct* my_channel;
 	int ret, recv_bytes;
-	int fifo;
+	int fd[2];
+	char* name_channel;  //nome del canale
 	int connect=0;  //flag che indica se il client è connesso ad un canale oppure no
 	
     char buf[1024];
@@ -55,17 +62,40 @@ void* connection_handler(void* arg) {
 		/**TODO: fare il log**/
 		
 		// check if create 
-		if (!connect && recv_bytes == create_command_len && !memcmp(buf, create_command, create_command_len)){
+		/**  /create <name_channel>  **/
+		if (!connect && !memcmp(buf, create_command, create_command_len)){
+			if(DEBUG) printf("try to create new channel\n");
+			
+			name_channel=prendiNome(buf); //prendo il nome del canale
+			
+			
+			//accedo alla lista condivisa
+			ret=sem_wait(sem);
+			ERROR_HELPER(ret,"error sem_wait");
+			
+			/**TODO: verificare che il nome del canale sia disponibile**/
+			
+			ret=sem_post(sem);
+			ERROR_HELPER(ret,"error sem_post"); //fine sezione critica
+			
+			
 			if(DEBUG) printf("create new channel\n");
+			
+			channel_struct* my_channel=(channel_struct*) malloc(sizeof(channel_struct));
+			
+			ret=pipe(fd);
+			ERROR_HELPER(ret,"errore apertura pipe");
+			
+			
 			
 			//creo il thread che gestirà il canale
 			pthread_t thread;
 
 			// put arguments for the new thread into a buffer
-			handler_args_t* thread_args = malloc(sizeof(handler_args_t));
-			thread_args -> socket_desc = args->socket_desc;  //passo il descrittore del client
-			thread_args -> client_addr = args->client_addr;  //passo l'indirizzo del client
+			handler_args_c* thread_args = malloc(sizeof(handler_args_c));
 			thread_args -> channel_list = channel_list;  //passo il puntatore alla lista dei canali
+			thread_args -> fd = fd[0];  //passe il descrittore di lettura della pipe
+			thread_args -> my_channel = my_channel;  //passo il canale di cui si deve occupare
 		   
 
 			if (pthread_create(&thread, NULL, channel_handler, (void*)thread_args) != 0) {
@@ -77,37 +107,25 @@ void* connection_handler(void* arg) {
 
 			pthread_detach(thread); // I won't phtread_join() on this thread	
 			
+			//accedo alla lista condivisa
 			ret=sem_wait(sem);
 			ERROR_HELPER(ret,"error sem_wait");
 			
-		/**	//creo un nuovo canale e setto la struttura dati che lo rappresenta
-			channel_list -> num_channels = channel_list -> num_channels+1; //aumento di 1 il numero di canali
-			channel_list -> channel = (channel_struct*) realloc (channel_list->channel, sizeof(channel_struct)*(channel_list->num_channels));  
 			
-			my_channel = &channel_list->channel[channel_list -> num_channels-1];  //prendo il mio canale (cioè l'ultimo della lista) e lo copio per comodità
-			
-			my_channel -> dim = 1;  								//quando si crea il canale c'è solo il proprietario
-			my_channel -> client_desc = (int*)malloc(sizeof(int)); 	//allocazione dinamica
-			my_channel -> client_desc[0] = args -> socket_desc; 	//aggiungo il proprietario ai client connessi al canale
-			my_channel -> owner = args -> socket_desc; 				//setto il proprietario
-			my_channel -> id = 0;									//setto un id al canale. Per ora a tutti zero 
-			/**TODO: decidere come gestire gli id dei canali**
-
-					
-			//per ora faccio solo una stampa
-			if(DEBUG) printChannel(my_channel); //stampa di debug del canale
-			**/
+			/**	TODO: **/
 			
 			ret=sem_post(sem);
 			ERROR_HELPER(ret,"error sem_post");
-					
+			
+			connect=1;
 				
 		}
 		// check if join
+		/**  /join <name_channel>  **/
 		if (!connect && recv_bytes == join_command_len && !memcmp(buf, join_command, join_command_len)){
 			printf("join canale\n");		
 			/**TODO: join al canale**/
-			
+			connect=1;
 		}
 		
 		/**TODO: gestire altri comandi (e.g. QUIT, DELETE, ecc...)**/
@@ -123,4 +141,10 @@ void* connection_handler(void* arg) {
     free(args);
 
     pthread_exit(NULL);
+}
+
+char* prendiNome(char* str){
+	char res[MAX_LENGHT]="prova";
+	/**TODO: scrivere la funzione che prende il nome**/
+	return res;
 }
