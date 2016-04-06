@@ -27,6 +27,7 @@
 #define JOIN_COMMAND  "JOIN"
 #define QUIT_COMMAND  "QUIT"
 #define SERVER_PORT     2016
+#define FIFO_NAME  "fifo"
 
 //semaforo per channle_list_struct
 sem_t* sem;

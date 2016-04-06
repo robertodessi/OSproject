@@ -13,11 +13,14 @@ typedef struct {
     int owner;//descrittore del client creatore del canale
 } channel_struct;
 
+
 //struttura dati che rappresenta la lista di canali
 typedef struct {
     int num_channels; //dimensione dell'array channel
-    channel_struct* channel; //array dei canale
+    char* channel[20]; //array dei canale
+    int* pipe;  
 } channel_list_struct;
+
 
 //struttura dati che rappresenta i dati passati al thread che si occupa del canale
 typedef struct handler_args_s {
@@ -29,7 +32,7 @@ typedef struct handler_args_s {
 
 
 //funzione che esegue il thread del canale
-void* connection_handler(void* arg);
+void* channel_handler(void* arg);
 
 //stampa le info di un canale
 void printChannel(channel_struct* channel);

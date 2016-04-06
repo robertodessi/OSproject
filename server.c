@@ -1,6 +1,7 @@
 #include "common.h"
 #include "log.h"
 #include "channel.h"
+#include "thread.h"
 
 #include <stdio.h>//printf
 #include <stdlib.h>//warning exit
@@ -35,8 +36,9 @@ int main(int argc, char *argv[]) {
     int sockaddr_len = sizeof(struct sockaddr_in); // we will reuse it for accept()
     
     //struttura che rappresenta la lista di tutti i canali
-	channel_list_struct* channel_list=(channel_list_struct*)malloc(sizeof(channel_list_struct));   
-	channel_list->num_channels=0; //inizialmente ci sono 0 canali
+	channel_list_struct channel_list;  
+	channel_list.num_channels=0; //inizialmente ci sono 0 canali
+	
 	
 	//alloco e inizializzo il semaforo
     sem=malloc(sizeof(sem_t));
@@ -133,7 +135,7 @@ int main(int argc, char *argv[]) {
 		handler_args_t* thread_args = malloc(sizeof(handler_args_t));
 		thread_args -> socket_desc = client_desc;  //passo il descrittore del client
 		thread_args -> client_addr = client_addr;  //passo l'indirizzo del client
-		thread_args -> channel_list = channel_list;  //passo il puntatore alla lista dei canali
+		thread_args -> channel_list = &channel_list;  //passo il puntatore alla lista dei canali
 	   
 
 		if (pthread_create(&thread, NULL, connection_handler, (void*)thread_args) != 0) {
