@@ -20,6 +20,7 @@ typedef struct {
     int num_channels; //dimensione dell'array channel
     char* name_channel[20]; //array dei nomi canale
     channel_struct* channel;  //array di puntatori alla struttura dati canale  
+    sem_t* sem_channel;
 } channel_list_struct;
 
 

@@ -41,6 +41,10 @@ void* connection_handler(void* arg) {
     char* join_command = JOIN_COMMAND;
     size_t join_command_len = strlen(join_command);
     
+    //QUIT
+    char* quit_command = QUIT_COMMAND;
+    size_t quit_command_len = strlen(quit_command);
+    
 	/**END_COMMAND **/
 	
 	
@@ -81,7 +85,13 @@ void* connection_handler(void* arg) {
 			
 			if(DEBUG) printf("create new channel\n");
 			
-			channel_struct* my_channel=(channel_struct*) malloc(sizeof(channel_struct));			
+			channel_struct* my_channel=(channel_struct*) malloc(sizeof(channel_struct));	
+			my_channel -> dim = 1;  //quando si crea il canale c'è solo il proprietario
+			my_channel -> client_desc = (int*)malloc(sizeof(int)); //allocazione dinamica
+			my_channel -> client_desc[0] = args->socket_desc; //aggiungo il proprietario ai client connessi al canale
+			my_channel ->  owner = args->socket_desc; //setto il proprietario
+			my_channel -> name_channel = name_channel;
+			my_channel ->  id = 0; //setto un id al canale. Per ora a tutti zero 		
 		
 			
 			//accedo alla lista condivisa
@@ -89,7 +99,7 @@ void* connection_handler(void* arg) {
 			ERROR_HELPER(ret,"error sem_wait");
 			
 			
-			/**	TODO: aggiungere alla lista canali my_channel**/
+			/**	TODO: aggiungere my_channel alla lista dei canali (channel_list)**/
 			
 			ret=sem_post(sem);
 			ERROR_HELPER(ret,"error sem_post");
@@ -106,8 +116,23 @@ void* connection_handler(void* arg) {
 			/**TODO: join al canale**/
 			connect=1;
 		}
-		
-		/**TODO: gestire altri comandi (e.g. QUIT, DELETE, ecc...)**/
+		//check if quit
+		if (connect && recv_bytes==quit_command_len && !memcmp(buf, quit_command, quit_command_len)){
+			printf("quit canale\n");		
+			
+			//chi esce NON è il propretario del canale
+			if(my_channel->owner!=args->socket_desc){
+			
+				/**TODO: cancellare da my_channel il suo descrittore*/
+			
+			}
+			else{
+				/**TODO: gestire in caso in cui il creatore esce dal canale**/
+			}
+			
+			connect=0;
+		}
+		/**TODO: gestire altri comandi (e.g. /quit, /delete, ecc...)**/
 	}
 	
     // close socket
@@ -123,13 +148,15 @@ void* connection_handler(void* arg) {
 }
 
 char* prendiNome(char* str){
-	char res[MAX_LENGHT]="prova";
+	char* res = (char*)malloc(sizeof(char)*10);
+	strcpy(res,"prova");
 	/**TODO: scrivere la funzione che prende il nome**/
 	return res;
 }
 
 void printChannel(channel_struct* channel){
 	printf("\nCHANNEL\n");
+	printf("name: %s\n", channel->name_channel);
 	printf("id: %d\n",channel->id);
 	printf("owner: %d\n",channel->owner);
 	printf("dimension: %d\n",channel->dim);
