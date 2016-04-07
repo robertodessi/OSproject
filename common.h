@@ -23,10 +23,11 @@
 #define DEBUG           1   // display debug messages
 #define MAX_CONN_QUEUE  3   // max number of connections the server can queue
 #define SERVER_ADDRESS  "127.0.0.1"
-#define CREATE_COMMAND  "CREATE"
-#define JOIN_COMMAND  "JOIN"
-#define QUIT_COMMAND  "QUIT"
+#define CREATE_COMMAND  "/create"
+#define JOIN_COMMAND  "/join"
+#define QUIT_COMMAND  "/quit"
 #define SERVER_PORT     2016
+#define MAX_LENGHT 50
 
 
 //semaforo per channle_list_struct

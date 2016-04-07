@@ -1,7 +1,28 @@
 #ifndef THREAD_H
 #define THREAD_H
 
-#include "channel.h" 
+#include "common.h" 
+
+
+
+//struttura dati che rappresenta il canale
+typedef struct {
+    int dim; //dimensione dell'array client_desc
+    int* client_desc; //array dei descrittori dei vari client connessi al canale
+    int id; //identificatore del canale
+    char* name_channel; //nome del canale
+    int owner;//descrittore del client creatore del canale
+} channel_struct;
+
+
+//struttura dati che rappresenta la lista di canali
+typedef struct {
+    int num_channels; //dimensione dell'array channel
+    char* name_channel[20]; //array dei nomi canale
+    channel_struct* channel;  //array di puntatori alla struttura dati canale  
+} channel_list_struct;
+
+
 
 //struttura dati che rappresenta i dati passati al thread che si occupa del client
 typedef struct handler_args_s {
@@ -16,5 +37,8 @@ void* connection_handler(void* arg);
 
 //ritorna il nome del canale prendendolo dal comando ricevuto contenuto in buf
 char* prendiNome(char* str);
+
+//stampa le info di un canale
+void printChannel(channel_struct* channel);
 
 #endif 

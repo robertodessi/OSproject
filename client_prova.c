@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -43,10 +44,10 @@ int main(int argc, char* argv[]) {
 	ret = connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
 	ERROR_HELPER(ret, "Could not create connection");
 	if (DEBUG) fprintf(stderr, "Connection established!\n");
-	printf("CREATE or JOIN <name_channel>\n");
+	printf("/create or /join <name_channel>\n");
 	while(1){
 		printf("send: ");
-		ret=scanf("%s",buf);
+		gets(buf);
 		buf_len = strlen(buf);
 		
 		

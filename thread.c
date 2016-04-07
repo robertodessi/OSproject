@@ -1,6 +1,5 @@
 #include "thread.h"
 #include "common.h"
-#include "channel.h"
 
 #include <netinet/in.h>
 #include <netdb.h>
@@ -19,9 +18,10 @@ void* connection_handler(void* arg) {
     handler_args_t* args = (handler_args_t*)arg;
 	channel_list_struct* channel_list = (args->channel_list); //mi salvo la channel_list_struct (per comodità) 
 	channel_struct* my_channel;
+	
 	int ret, recv_bytes;
-	int fd[2];
 	char* name_channel;  //nome del canale
+	
 	int connect=0;  //flag che indica se il client è connesso ad un canale oppure no
 	
     char buf[1024];
@@ -81,31 +81,8 @@ void* connection_handler(void* arg) {
 			
 			if(DEBUG) printf("create new channel\n");
 			
-			channel_struct* my_channel=(channel_struct*) malloc(sizeof(channel_struct));
-			
-			ret=pipe(fd);
-			ERROR_HELPER(ret,"errore apertura pipe");
-			
-			
-			
-			//creo il thread che gestirà il canale
-			pthread_t thread;
-
-			// put arguments for the new thread into a buffer
-			handler_args_c* thread_args = malloc(sizeof(handler_args_c));
-			thread_args -> channel_list = channel_list;  //passo il puntatore alla lista dei canali
-			thread_args -> fd = fd[0];  //passe il descrittore di lettura della pipe
-			thread_args -> my_channel = my_channel;  //passo il canale di cui si deve occupare
-		   
-
-			if (pthread_create(&thread, NULL, channel_handler, (void*)thread_args) != 0) {
-				fprintf(stderr, "Can't create a new thread, error %d\n", errno);
-				exit(EXIT_FAILURE);
-			}
-
-			if (DEBUG) fprintf(stderr, "New thread created to handle the request!\n");
-
-			pthread_detach(thread); // I won't phtread_join() on this thread	
+			channel_struct* my_channel=(channel_struct*) malloc(sizeof(channel_struct));			
+		
 			
 			//accedo alla lista condivisa
 			ret=sem_wait(sem);
@@ -116,6 +93,8 @@ void* connection_handler(void* arg) {
 			
 			ret=sem_post(sem);
 			ERROR_HELPER(ret,"error sem_post");
+			
+			if(DEBUG) printChannel(my_channel);
 			
 			connect=1;
 				
@@ -147,4 +126,14 @@ char* prendiNome(char* str){
 	char res[MAX_LENGHT]="prova";
 	/**TODO: scrivere la funzione che prende il nome**/
 	return res;
+}
+
+void printChannel(channel_struct* channel){
+	printf("\nCHANNEL\n");
+	printf("id: %d\n",channel->id);
+	printf("owner: %d\n",channel->owner);
+	printf("dimension: %d\n",channel->dim);
+	printf("client_desc: ");
+	for(int i=0;i<channel->dim;i++)printf("%d, ",channel->client_desc[i]);
+	printf("\n\n");
 }

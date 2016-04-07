@@ -1,6 +1,5 @@
 #include "common.h"
 #include "log.h"
-#include "channel.h"
 #include "thread.h"
 
 #include <stdio.h>//printf
