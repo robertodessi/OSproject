@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 	
 	//alloco e inizializzo il semaforo
     sem=malloc(sizeof(sem_t));
-    ret=sem_init(sem, 0, 1);
+    //ret=sem_init(sem, 0, 1);
     ERROR_HELPER(ret, "[FATAL ERROR] Could not create a semaphore");
 
     /*
@@ -118,12 +118,12 @@ int main(int argc, char *argv[]) {
         ERROR_HELPER(client_desc, "Cannot open socket for incoming connection");
         
         // parse client IP address and port
-		char client_ip[INET_ADDRSTRLEN];
-		inet_ntop(AF_INET, &(client_addr->sin_addr), client_ip, INET_ADDRSTRLEN);
-		uint16_t client_port = ntohs(client_addr->sin_port); // port number is an unsigned short
+	char client_ip[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &(client_addr->sin_addr), client_ip, INET_ADDRSTRLEN);
+	uint16_t client_port = ntohs(client_addr->sin_port); // port number is an unsigned short
 
         if (DEBUG) fprintf(stderr, "Incoming connection accepted... %s:%d\n",client_ip,client_port);
-        /**TODO: gestire meglio il log**/
+        
         logMsg("utente connesso");
      	
 		//creo il thread che gestirà il client da ora in avanti

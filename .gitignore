@@ -42,7 +42,8 @@
 #Netbeans
 nbproject
 
-#Binary
+#Binary and launcher
 *client_prova
 *server
 *launcher
+*launcher.c
