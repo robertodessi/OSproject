@@ -65,4 +65,5 @@ int main(int argc, char* argv[]) {
     if (DEBUG) fprintf(stderr, "Exiting...\n");
 
     exit(EXIT_SUCCESS);
+    
 }
