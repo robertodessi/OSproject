@@ -18,4 +18,4 @@ run:
 
 :phony
 clean:
-	rm -f server client_prova
+	rm -f server client_prova launcher
