@@ -37,7 +37,7 @@ typedef struct handler_args_s {
 void* connection_handler(void* arg);
 
 //ritorna il nome del canale prendendolo dal comando ricevuto contenuto in buf
-char* prendiNome(char* str);
+char* prendiNome(char* str, int len);
 
 //stampa le info di un canale
 void printChannel(channel_struct* channel);
