@@ -28,6 +28,7 @@
 #define QUIT_COMMAND  "/quit"
 #define SERVER_PORT     2016
 #define MAX_LENGHT 50
+#define NAME_SEM "common_sem"
 
 
 //semaforo per channle_list_struct

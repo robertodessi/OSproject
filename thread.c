@@ -68,13 +68,9 @@ void* connection_handler(void* arg) {
         /**  /create <name_channel>  **/
         if (!connect && !memcmp(buf, create_command, create_command_len)) {
             if (DEBUG) printf("try to create new channel\n");
-            
-			name_channel=prendiNome(buf); //prendo il nome del canale
-            
 
-            
-            
-            name_channel = prendiNome(buf,recv_bytes+1); //prendo il nome del canale
+            //name_channel=prendiNome(buf); //prendo il nome del canale
+            name_channel = prendiNome(buf, recv_bytes + 1); //prendo il nome del canale
 
 
             //accedo alla lista condivisa
@@ -89,30 +85,30 @@ void* connection_handler(void* arg) {
 
             if (DEBUG) printf("create new channel\n");
 
-            channel_struct* my_channel = (channel_struct*) malloc(sizeof (channel_struct));
-            my_channel -> dim = 1; //quando si crea il canale c'è solo il proprietario
-            my_channel -> client_desc = (int*) malloc(sizeof (int)); //allocazione dinamica
-            my_channel -> client_desc[0] = args->socket_desc; //aggiungo il proprietario ai client connessi al canale
-            my_channel -> owner = args->socket_desc; //setto il proprietario
-            my_channel -> name_channel = name_channel;
-            my_channel -> id = 0; //setto un id al canale. Per ora a tutti zero 		
+                channel_struct* my_channel = (channel_struct*) malloc(sizeof (channel_struct));
+                my_channel -> dim = 1; //quando si crea il canale c'è solo il proprietario
+                my_channel -> client_desc = (int*) malloc(sizeof (int)); //allocazione dinamica
+                my_channel -> client_desc[0] = args->socket_desc; //aggiungo il proprietario ai client connessi al canale
+                my_channel -> owner = args->socket_desc; //setto il proprietario
+                my_channel -> name_channel = name_channel;
+                my_channel -> id = 0; //setto un id al canale. Per ora a tutti zero 		
 
 
-            //accedo alla lista condivisa
-            ret = sem_wait(sem);
-            ERROR_HELPER(ret, "error sem_wait");
+                //accedo alla lista condivisa
+                ret = sem_wait(sem);
+                ERROR_HELPER(ret, "error sem_wait");
 
 
-            /**	TODO: aggiungere my_channel alla lista dei canali (channel_list)**/
+                /**	TODO: aggiungere my_channel alla lista dei canali (channel_list)**/
 
-            ret = sem_post(sem);
-            ERROR_HELPER(ret, "error sem_post");
+                ret = sem_post(sem);
+                ERROR_HELPER(ret, "error sem_post");
 
-            if (DEBUG) printChannel(my_channel);
+                if (DEBUG) printChannel(my_channel);
 
-            connect = 1;
+                connect = 1;
 
-        }
+            }
         // check if join
         /**  /join <name_channel>  **/
         if (!connect && recv_bytes == join_command_len && !memcmp(buf, join_command, join_command_len)) {
@@ -154,15 +150,15 @@ char* prendiNome(char* str, int len) {
     char* res = (char*) malloc(sizeof (char)*20);
     //strcpy(res, "prova");
     int index;
-    
+
     int i = 0;
-    for(i = 0; i<len; i++){
-        if(str[i] == " ") {
+    for (i = 0; i < len; i++) {
+        if (str[i] == " ") {
             index = ++i;
             break;
         }
     }
-    for(i = 0; i < len - index; i++) res[i] = str[index++];
+    for (i = 0; i < len - index; i++) res[i] = str[index++];
     res[++i] = "\0";
     return res;
 }

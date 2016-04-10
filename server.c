@@ -36,8 +36,8 @@ int main(int argc, char *argv[]) {
     //struttura che rappresenta la lista di tutti i canali
     channel_list_struct channel_list;  
     channel_list.num_channels=0; //inizialmente ci sono 0 canali
-	
-	
+    
+    
     //alloco e inizializzo il semaforo
     sem=(sem_t*)malloc(sizeof(sem_t));
     //ret=sem_open(sem, 0, 1);
@@ -126,11 +126,8 @@ int main(int argc, char *argv[]) {
 
         if (DEBUG) fprintf(stderr, "Incoming connection accepted... %s:%d\n",client_ip,client_port);
         
-        // buffer to store msg to log
-        char msgBuf[48];
-        //ret = sprintf(msgBuf, "Incoming connection accepted from: IP: %s | PORT: %d",client_ip,client_port);
+        logConnection(client_ip,client_port);
         
-        // TODO log//
         
 		//creo il thread che gestirà il client da ora in avanti
 		pthread_t thread;
@@ -150,7 +147,7 @@ int main(int argc, char *argv[]) {
 		if (DEBUG) fprintf(stderr, "New thread created to handle the request!\n");
                 
 		pthread_detach(thread); // I won't phtread_join() on this thread	
-                
+            
         // we can't just reset fields: we need a new buffer for client_addr!
 	client_addr = calloc(1, sizeof(struct sockaddr_in));
         
