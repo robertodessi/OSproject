@@ -36,8 +36,8 @@ typedef struct handler_args_s {
 //funzione che esegue il thread del client
 void* connection_handler(void* arg);
 
-//ritorna il nome del canale prendendolo dal comando ricevuto contenuto in buf
-char* prendiNome(char* str, int len);
+//ritorna il nome del canale prendendolo dal comando ricevuto lungo command_len contenuto in str
+char* prendiNome(char* str, int len, size_t command_len);
 
 //stampa le info di un canale
 void printChannel(channel_struct* channel);

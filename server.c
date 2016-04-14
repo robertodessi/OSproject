@@ -2,6 +2,7 @@
 #include "log.h"
 #include "thread.h"
 
+
 #include <stdio.h>//printf
 #include <stdlib.h>//warning exit
 #include <errno.h>//per poter leggere il valore di errno
@@ -11,6 +12,7 @@
 #include <unistd.h> 
 #include <pthread.h>
 #include <semaphore.h>
+#include <fcntl.h>  //O_CREATE
 
 
 
@@ -42,8 +44,17 @@ int main(int argc, char *argv[]) {
     sem=(sem_t*)malloc(sizeof(sem_t));
     //ret=sem_open(sem, 0, 1);
 
-    sem = sem_open(NAME_SEM, O_CREAT, 0666, 1);
-    ERROR_HELPER(ret, "[FATAL ERROR] Could not create a semaphore");
+    sem = sem_open(NAME_SEM, O_CREAT|O_EXCL, 0666, 1);
+    if (sem == SEM_FAILED && errno == EEXIST) {
+        printf("already exists, let's unlink it...");
+        sem_unlink(NAME_SEM);
+        printf("and then reopen it...");
+        sem = sem_open(NAME_SEM, O_CREAT|O_EXCL, 0666, 1);
+    }
+    if (sem == SEM_FAILED) {
+        ERROR_HELPER(-1, "[FATAL ERROR] Could not create a semaphore");
+    }
+    
 
     /*
     ret = sigfillset(&maschera);

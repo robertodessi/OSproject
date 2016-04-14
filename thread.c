@@ -19,7 +19,7 @@ void* connection_handler(void* arg) {
     channel_struct* my_channel;
 
     int ret, recv_bytes;
-    char* name_channel; //nome del canale
+    char* name_channel=NULL; //nome del canale
 
     int connect = 0; //flag che indica se il client è connesso ad un canale oppure no
 
@@ -69,9 +69,8 @@ void* connection_handler(void* arg) {
         if (!connect && !memcmp(buf, create_command, create_command_len)) {
             if (DEBUG) printf("try to create new channel\n");
 
-            //name_channel=prendiNome(buf); //prendo il nome del canale
-            name_channel = prendiNome(buf, recv_bytes + 1); //prendo il nome del canale
-
+            name_channel = prendiNome(buf, recv_bytes + 1,create_command_len); //prendo il nome del canale
+			/** TODO: controllare che il nome non sia vuoto*/
 
             //accedo alla lista condivisa
             ret = sem_wait(sem);
@@ -146,20 +145,15 @@ void* connection_handler(void* arg) {
     pthread_exit(NULL);
 }
 
-char* prendiNome(char* str, int len) {
-    char* res = (char*) malloc(sizeof (char)*20);
-    //strcpy(res, "prova");
-    int index;
-
+char* prendiNome(char* str, int len, size_t command_len) {
+    char* res = (char*) malloc(sizeof(char) * (len-command_len));
+    /* Warning: 
+     * in questo momento il comando funziona anche senza spazio tra il comando e il nome (es:  /create<nome_canale>) */
+    int index=command_len;
     int i = 0;
-    for (i = 0; i < len; i++) {
-        if (str[i] == " ") {
-            index = ++i;
-            break;
-        }
-    }
-    for (i = 0; i < len - index; i++) res[i] = str[index++];
-    res[++i] = "\0";
+    if(str[index] == ' ') index++;  //tolgo l'eventuale spazio tra il comando e il nome del canale    
+    for (; i <len ; i++) res[i] = str[index++];
+    res[++i] = '\0';
     return res;
 }
 

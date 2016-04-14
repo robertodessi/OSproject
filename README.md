@@ -8,10 +8,20 @@ Feel free to contact us for any further information at roberto.dessi11@gmail.com
 
 ##Instruction
 
-To compile and launch:
+To compile and launch in GNOME:
 
 1. Open terminal in the project directory 
 
 2. `make `
 
 3. `make run `
+
+`
+
+To compile and launch in generic UNIX:
+
+1. Open terminal in the project directory 
+
+2. `make `
+
+3. `./server`

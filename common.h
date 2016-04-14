@@ -24,10 +24,9 @@
 #define MAX_CONN_QUEUE  3   // max number of connections the server can queue
 #define SERVER_ADDRESS  "127.0.0.1"
 #define CREATE_COMMAND  "/create"
-#define JOIN_COMMAND  "/join"
-#define QUIT_COMMAND  "/quit"
+#define JOIN_COMMAND    "/join"
+#define QUIT_COMMAND    "/quit"
 #define SERVER_PORT     2016
-#define MAX_LENGHT 50
 #define NAME_SEM "common_sem"
 
 
