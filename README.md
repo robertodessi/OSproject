@@ -16,7 +16,7 @@ To compile and launch in GNOME:
 
 3. `make run `
 
-`
+
 
 To compile and launch in generic UNIX:
 
