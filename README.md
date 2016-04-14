@@ -15,13 +15,3 @@ To compile and launch in GNOME:
 2. `make `
 
 3. `make run `
-
-
-
-To compile and launch in generic UNIX:
-
-1. Open terminal in the project directory 
-
-2. `make `
-
-3. `./server`
