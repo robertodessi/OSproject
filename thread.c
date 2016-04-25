@@ -22,10 +22,12 @@ void* connection_handler(void* arg) {
     char* name_channel=NULL; //nome del canale
 
     int connect = 0; //flag che indica se il client è connesso ad un canale oppure no
-
+	
+	//buffer per i recv
     char buf[1024];
     size_t buf_len = sizeof (buf);
-
+	
+	//buffer per i send
     char msg[1024];
     size_t msg_len;
 
@@ -70,42 +72,53 @@ void* connection_handler(void* arg) {
             if (DEBUG) printf("try to create new channel\n");
 
             name_channel = prendiNome(buf, recv_bytes + 1,create_command_len); //prendo il nome del canale
-			/** TODO: controllare che il nome non sia vuoto*/
+			
+			//controllo che il nome non sia vuoto
+			if(strlen(name_channel)==0){				 
+				 strcpy(msg,"il nome del canale non può essere vuoto\0");
+				 while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
+						if (errno == EINTR) continue;
+						ERROR_HELPER(-1, "Cannot write to the socket");
+				}
+			}
+			else{
+	
 
-            //accedo alla lista condivisa
-            ret = sem_wait(sem);
-            ERROR_HELPER(ret, "error sem_wait");
+				//accedo alla lista condivisa
+				ret = sem_wait(sem);
+				ERROR_HELPER(ret, "error sem_wait");
 
-            /**TODO: verificare che il nome del canale sia disponibile**/
+				/**TODO: verificare che il nome del canale sia disponibile**/
 
-            ret = sem_post(sem);
-            ERROR_HELPER(ret, "error sem_post"); //fine sezione critica
-
-
-            if (DEBUG) printf("create new channel\n");
-
-                channel_struct* my_channel = (channel_struct*) malloc(sizeof (channel_struct));
-                my_channel -> dim = 1; //quando si crea il canale c'è solo il proprietario
-                my_channel -> client_desc = (int*) malloc(sizeof (int)); //allocazione dinamica
-                my_channel -> client_desc[0] = args->socket_desc; //aggiungo il proprietario ai client connessi al canale
-                my_channel -> owner = args->socket_desc; //setto il proprietario
-                my_channel -> name_channel = name_channel;
-                my_channel -> id = 0; //setto un id al canale. Per ora a tutti zero 		
-
-
-                //accedo alla lista condivisa
-                ret = sem_wait(sem);
-                ERROR_HELPER(ret, "error sem_wait");
+				ret = sem_post(sem);
+				ERROR_HELPER(ret, "error sem_post"); //fine sezione critica
 
 
-                /**	TODO: aggiungere my_channel alla lista dei canali (channel_list)**/
+				if (DEBUG) printf("create new channel\n");
 
-                ret = sem_post(sem);
-                ERROR_HELPER(ret, "error sem_post");
+					channel_struct* my_channel = (channel_struct*) malloc(sizeof (channel_struct));
+					my_channel -> dim = 1; //quando si crea il canale c'è solo il proprietario
+					my_channel -> client_desc = (int*) malloc(sizeof (int)); //allocazione dinamica
+					my_channel -> client_desc[0] = args->socket_desc; //aggiungo il proprietario ai client connessi al canale
+					my_channel -> owner = args->socket_desc; //setto il proprietario
+					my_channel -> name_channel = name_channel;
+					my_channel -> id = 0; //setto un id al canale. Per ora a tutti zero 		
 
-                if (DEBUG) printChannel(my_channel);
 
-                connect = 1;
+					//accedo alla lista condivisa
+					ret = sem_wait(sem);
+					ERROR_HELPER(ret, "error sem_wait");
+
+
+					/**	TODO: aggiungere my_channel alla lista dei canali (channel_list)**/
+
+					ret = sem_post(sem);
+					ERROR_HELPER(ret, "error sem_post");
+
+					if (DEBUG) printChannel(my_channel);
+
+					connect = 1;
+				}
 
             }
         // check if join
@@ -148,10 +161,11 @@ void* connection_handler(void* arg) {
 char* prendiNome(char* str, int len, size_t command_len) {
     char* res = (char*) malloc(sizeof(char) * (len-command_len));
     /* Warning: 
-     * in questo momento il comando funziona anche senza spazio tra il comando e il nome (es:  /create<nome_canale>) */
+     * in questo momento il comando funziona anche senza spazio tra il comando e il nome (es:  /create<nome_canale>) 
+     * funziona anche se ci sono più spazi */
     int index=command_len;
     int i = 0;
-    if(str[index] == ' ') index++;  //tolgo l'eventuale spazio tra il comando e il nome del canale    
+    while (str[index] == ' ') index++;  //tolgo gli eventuali spazi tra il comando e il nome del canale  
     for (; i <len ; i++) res[i] = str[index++];
     res[++i] = '\0';
     return res;

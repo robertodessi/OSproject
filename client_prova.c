@@ -30,6 +30,9 @@ int main(int argc, char* argv[]) {
     char buf[1024];
     size_t buf_len;
     
+    char msg_recv[1024];
+    size_t msg_recv_len=sizeof(msg_recv);
+    
 /*
     // display welcome message from server
     while ( (msg_len = recv(socket_desc, buf, buf_len - 1, 0)) < 0 ) {
@@ -55,6 +58,13 @@ int main(int argc, char* argv[]) {
 				if (errno == EINTR) continue;
 				ERROR_HELPER(-1, "Cannot write to the socket");
 		}
+	
+		while ( (ret = recv(socket_desc, msg_recv, msg_recv_len, 0)) < 0 ) {
+            if (errno == EINTR) continue;
+            ERROR_HELPER(-1, "Cannot read from socket");
+        }
+        printf("recv: %s\n",msg_recv);
+		
 
 	}
 
