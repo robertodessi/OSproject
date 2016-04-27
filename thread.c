@@ -14,8 +14,11 @@
 //====================================
 
 void* connection_handler(void* arg) {
+	  
     handler_args_t* args = (handler_args_t*) arg;
-    channel_list_struct* channel_list = (args->channel_list); //mi salvo la channel_list_struct (per comodità) 
+  
+
+    channel_list_struct* channel_list;
     channel_struct* my_channel;
 
     int ret, recv_bytes;
@@ -71,8 +74,7 @@ void* connection_handler(void* arg) {
         if (!connect && !memcmp(buf, create_command, create_command_len)) {
             if (DEBUG) printf("try to create new channel\n");
 
-            name_channel = prendiNome(buf, recv_bytes + 1,create_command_len); //prendo il nome del canale
-			
+            name_channel = prendiNome(buf, recv_bytes + 1,create_command_len); //prendo il nome del canale			
 			//controllo che il nome non sia vuoto
 			if(strlen(name_channel)==0){				 
 				 strcpy(msg,"il nome del canale non può essere vuoto\0");
@@ -81,24 +83,31 @@ void* connection_handler(void* arg) {
 						ERROR_HELPER(-1, "Cannot write to the socket");
 				}
 				continue;
-			}
-		
-	
+			}	
+			
+			printf("ciao1\n");
 
 			/**INIZIO SEZIONE CRITICA**/
 			ret = sem_wait(sem);
 			ERROR_HELPER(ret, "error sem_wait");
+			
+			channel_list = *(args->channel_list); //mi salvo la channel_list_struct (per comodità) 
 
 			int i=0;
 			int nameIsPresent=0;  //booleano che indica se un nome è già stato preso oppure no
 			//controllo che il nome non sia già stato usato per un altro canale
+			printf("num channel=%d\n",channel_list->num_channels);
+			
 			while(i < channel_list->num_channels){
+				printf("name channel=%s\n",channel_list->name_channel[i]);
 				if(strcmp(name_channel,channel_list->name_channel[i])==0){ //equals
-						nameIsPresent=1;  //se è presente setto il booleano a vero
-						break;					
+					printf("strcompare");
+					nameIsPresent=1;  //se è presente setto il booleano a vero
+					break;					
 				}
 				i++;
 			}
+			printf("ciao2\n");
 			//se è il nome è già stato preso avviso il client
 			if(nameIsPresent){
 				strcpy(msg,"il nome del canale esiste già, scegline un altro\0");
@@ -107,54 +116,55 @@ void* connection_handler(void* arg) {
 						ERROR_HELPER(-1, "Cannot write to the socket");
 				} 
 				nameIsPresent=0;
-				continue;
+				ret = sem_post(sem);
+				ERROR_HELPER(ret, "error sem_post");
+				//FINE SEZIONE CRITICA//				
+				continue;  //non creo il cananale, quindi skippo il resto
 			}
 
-			ret = sem_post(sem);
-			ERROR_HELPER(ret, "error sem_post"); 
-			/**FINE SEZIONE CRITICA**/
-
+						
+			printf("ciao3\n");
 
 			if (DEBUG) printf("create new channel\n");
 
-				channel_struct* my_channel = (channel_struct*) malloc(sizeof (channel_struct));
-				my_channel -> dim = 1; //quando si crea il canale c'è solo il proprietario
-				my_channel -> client_desc = (int*) malloc(sizeof (int)); //allocazione dinamica
-				my_channel -> client_desc[0] = args->socket_desc; //aggiungo il proprietario ai client connessi al canale
-				my_channel -> owner = args->socket_desc; //setto il proprietario
-				my_channel -> name_channel = name_channel;
-				my_channel -> id = 0; //setto un id al canale. Per ora a tutti zero 		
+			channel_struct* my_channel = (channel_struct*) malloc(sizeof (channel_struct));
+			my_channel -> dim = 1; //quando si crea il canale c'è solo il proprietario
+			my_channel -> client_desc = (int*) malloc(sizeof (int)); //allocazione dinamica
+			my_channel -> client_desc[0] = args->socket_desc; //aggiungo il proprietario ai client connessi al canale
+			my_channel -> owner = args->socket_desc; //setto il proprietario
+			my_channel -> name_channel = name_channel;  
+			/*WARNING!! 
+			 * il nome del canale è ridondante!
+		     */
+			my_channel -> id = 0; //setto un id al canale. Per ora a tutti zero 		
 
 
+			// aggiungo my_channel alla lista dei canali (channel_list)
+			int n=++(channel_list->num_channels);  //uso n per rendere il codice più leggibile
+			channel_list->name_channel = (char**) realloc(channel_list->name_channel,n*sizeof(char*));  
+			channel_list->name_channel[n]=name_channel;	//aggiungo il nuovo nome
+			printf("nome=%s\n",channel_list->name_channel[n]);
 			
-			    /**INIZIO SEZIONE CRITICA**/
-				ret = sem_wait(sem);
-				ERROR_HELPER(ret, "error sem_wait");
+			channel_list->channel = (channel_struct**) realloc(channel_list->channel,n*sizeof(channel_struct*));  
+			channel_list->channel[n] = my_channel;	//aggiungo il nuovo canale		
+			*(args->channel_list)=channel_list;	//aggiorno il puntatore
+			printf("nome=%s\n",channel_list->name_channel[n]);
+			/** TODO: creare il semaforo per il canale (sem_channel)**/				
+						
 
+			ret = sem_post(sem);
+			ERROR_HELPER(ret, "error sem_post");
+			/**FINE SEZIONE CRITICA**/
 
-				// aggiungo my_channel alla lista dei canali (channel_list)
-				int n=++(channel_list->num_channels);  //uso n per rendere il codice più leggibile
-				args->channel_list->name_channel = (char**) realloc(channel_list->name_channel,n*sizeof(char*));  
-				channel_list->name_channel[n]=name_channel;	//aggiungo il nuovo nome
-				
-				channel_list->channel = (channel_struct*) realloc(channel_list->channel,sizeof(channel_struct)*(n));  
-				channel_list->channel[n] = *my_channel;	//aggiungo il nuovo canale			
-				/** TODO: creare il semaforo per il canale (sem_channel)**/				
-							
+			if (DEBUG) printChannel(my_channel);
+			
+			strcpy(msg,"canale creato con successo\0");
+			while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
+					if (errno == EINTR) continue;
+					ERROR_HELPER(-1, "Cannot write to the socket");
+			} 
 
-				ret = sem_post(sem);
-				ERROR_HELPER(ret, "error sem_post");
-				/**FINE SEZIONE CRITICA**/
-
-				if (DEBUG) printChannel(my_channel);
-				
-				strcpy(msg,"canale creato con successo\0");
-				while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
-						if (errno == EINTR) continue;
-						ERROR_HELPER(-1, "Cannot write to the socket");
-				} 
-
-				connect = 1;	//setto il flag di connessione a true	
+			connect = 1;	//setto il flag di connessione a true	
 
             }
         // check if join

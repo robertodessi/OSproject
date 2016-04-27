@@ -19,7 +19,7 @@ typedef struct {
 typedef struct {
     int num_channels; //dimensione dell'array channel
     char** name_channel; //array dei nomi canale
-    channel_struct* channel;  //array di puntatori alla struttura dati canale  
+    channel_struct** channel;  //array di puntatori alla struttura dati canale  
     sem_t* sem_channel;
 } channel_list_struct;
 
@@ -29,7 +29,7 @@ typedef struct {
 typedef struct handler_args_s {
     int socket_desc; //descrittore client
     struct sockaddr_in* client_addr; //address del client
-    channel_list_struct* channel_list;  //lista dei canali
+    channel_list_struct** channel_list;  //lista dei canali
 } handler_args_t;
 
 
