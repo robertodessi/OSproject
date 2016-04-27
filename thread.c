@@ -177,6 +177,11 @@ void* connection_handler(void* arg) {
         //check if quit
         if (connect && recv_bytes == quit_command_len && !memcmp(buf, quit_command, quit_command_len)) {
             printf("quit canale\n");
+            strcpy(msg,"quit dal canale\0");
+            while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
+					if (errno == EINTR) continue;
+					ERROR_HELPER(-1, "Cannot write to the socket");
+			}
 
             //chi esce NON è il propretario del canale
             if (my_channel->owner != args->socket_desc) {
