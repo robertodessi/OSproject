@@ -80,45 +80,81 @@ void* connection_handler(void* arg) {
 						if (errno == EINTR) continue;
 						ERROR_HELPER(-1, "Cannot write to the socket");
 				}
+				continue;
 			}
-			else{
+		
 	
 
-				//accedo alla lista condivisa
+			/**INIZIO SEZIONE CRITICA**/
+			ret = sem_wait(sem);
+			ERROR_HELPER(ret, "error sem_wait");
+
+			int i=0;
+			int nameIsPresent=0;  //booleano che indica se un nome è già stato preso oppure no
+			//controllo che il nome non sia già stato usato per un altro canale
+			while(i < channel_list->num_channels){
+				if(strcmp(name_channel,channel_list->name_channel[i])==0){ //equals
+						nameIsPresent=1;  //se è presente setto il booleano a vero
+						break;					
+				}
+				i++;
+			}
+			//se è il nome è già stato preso avviso il client
+			if(nameIsPresent){
+				strcpy(msg,"il nome del canale esiste già, scegline un altro\0");
+				 while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
+						if (errno == EINTR) continue;
+						ERROR_HELPER(-1, "Cannot write to the socket");
+				} 
+				nameIsPresent=0;
+				continue;
+			}
+
+			ret = sem_post(sem);
+			ERROR_HELPER(ret, "error sem_post"); 
+			/**FINE SEZIONE CRITICA**/
+
+
+			if (DEBUG) printf("create new channel\n");
+
+				channel_struct* my_channel = (channel_struct*) malloc(sizeof (channel_struct));
+				my_channel -> dim = 1; //quando si crea il canale c'è solo il proprietario
+				my_channel -> client_desc = (int*) malloc(sizeof (int)); //allocazione dinamica
+				my_channel -> client_desc[0] = args->socket_desc; //aggiungo il proprietario ai client connessi al canale
+				my_channel -> owner = args->socket_desc; //setto il proprietario
+				my_channel -> name_channel = name_channel;
+				my_channel -> id = 0; //setto un id al canale. Per ora a tutti zero 		
+
+
+			
+			    /**INIZIO SEZIONE CRITICA**/
 				ret = sem_wait(sem);
 				ERROR_HELPER(ret, "error sem_wait");
 
-				/**TODO: verificare che il nome del canale sia disponibile**/
+
+				// aggiungo my_channel alla lista dei canali (channel_list)
+				int n=++(channel_list->num_channels);  //uso n per rendere il codice più leggibile
+				args->channel_list->name_channel = (char**) realloc(channel_list->name_channel,n*sizeof(char*));  
+				channel_list->name_channel[n]=name_channel;	//aggiungo il nuovo nome
+				
+				channel_list->channel = (channel_struct*) realloc(channel_list->channel,sizeof(channel_struct)*(n));  
+				channel_list->channel[n] = *my_channel;	//aggiungo il nuovo canale			
+				/** TODO: creare il semaforo per il canale (sem_channel)**/				
+							
 
 				ret = sem_post(sem);
-				ERROR_HELPER(ret, "error sem_post"); //fine sezione critica
+				ERROR_HELPER(ret, "error sem_post");
+				/**FINE SEZIONE CRITICA**/
 
+				if (DEBUG) printChannel(my_channel);
+				
+				strcpy(msg,"canale creato con successo\0");
+				while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
+						if (errno == EINTR) continue;
+						ERROR_HELPER(-1, "Cannot write to the socket");
+				} 
 
-				if (DEBUG) printf("create new channel\n");
-
-					channel_struct* my_channel = (channel_struct*) malloc(sizeof (channel_struct));
-					my_channel -> dim = 1; //quando si crea il canale c'è solo il proprietario
-					my_channel -> client_desc = (int*) malloc(sizeof (int)); //allocazione dinamica
-					my_channel -> client_desc[0] = args->socket_desc; //aggiungo il proprietario ai client connessi al canale
-					my_channel -> owner = args->socket_desc; //setto il proprietario
-					my_channel -> name_channel = name_channel;
-					my_channel -> id = 0; //setto un id al canale. Per ora a tutti zero 		
-
-
-					//accedo alla lista condivisa
-					ret = sem_wait(sem);
-					ERROR_HELPER(ret, "error sem_wait");
-
-
-					/**	TODO: aggiungere my_channel alla lista dei canali (channel_list)**/
-
-					ret = sem_post(sem);
-					ERROR_HELPER(ret, "error sem_post");
-
-					if (DEBUG) printChannel(my_channel);
-
-					connect = 1;
-				}
+				connect = 1;	//setto il flag di connessione a true	
 
             }
         // check if join
@@ -157,6 +193,7 @@ void* connection_handler(void* arg) {
 
     pthread_exit(NULL);
 }
+
 
 char* prendiNome(char* str, int len, size_t command_len) {
     char* res = (char*) malloc(sizeof(char) * (len-command_len));

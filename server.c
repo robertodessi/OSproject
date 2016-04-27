@@ -33,11 +33,13 @@ int main(int argc, char *argv[]) {
     // some fields are required to be filled with 0
     struct sockaddr_in server_addr = {0};
 
-    int sockaddr_len = sizeof(struct sockaddr_in); // we will reuse it for accept()
+    int sockaddr_len = sizeof(struct sockaddr_in); 	// we will reuse it for accept()
     
     //struttura che rappresenta la lista di tutti i canali
     channel_list_struct channel_list;  
-    channel_list.num_channels=0; //inizialmente ci sono 0 canali
+    channel_list.num_channels=0; 						//inizialmente ci sono 0 canali
+    channel_list.name_channel=(char**)malloc(0);  		//inizializzo le strutture dati
+    channel_list.channel=(channel_struct*)malloc(0);  	//inizializzo le strutture dati
     
     
     //alloco e inizializzo il semaforo
@@ -148,7 +150,8 @@ int main(int argc, char *argv[]) {
 		thread_args -> socket_desc = client_desc;  //passo il descrittore del client
 		thread_args -> client_addr = client_addr;  //passo l'indirizzo del client
 		thread_args -> channel_list = &channel_list;  //passo il puntatore alla lista dei canali
-	   
+		
+		printf("qui1");
 
 		if (pthread_create(&thread, NULL, connection_handler, (void*)thread_args) != 0) {
 			fprintf(stderr, "Can't create a new thread, error %d\n", errno);
