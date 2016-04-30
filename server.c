@@ -11,8 +11,7 @@
 #include <arpa/inet.h>  // htons()
 #include <unistd.h> 
 #include <pthread.h>
-#include <semaphore.h>
-#include <fcntl.h>  //O_CREATE
+
 
 
 
@@ -37,9 +36,10 @@ int main(int argc, char *argv[]) {
     
     //struttura che rappresenta la lista di tutti i canali
     channel_list_struct*  channel_list=(channel_list_struct*)malloc(sizeof(channel_list_struct));
-    channel_list->num_channels=0; 						//inizialmente ci sono 0 canali
-    channel_list->name_channel=(char**)malloc(0);  		//inizializzo le strutture dati
+    channel_list->num_channels=0; 						    //inizialmente ci sono 0 canali
+    channel_list->name_channel=(char**)malloc(0);  		    //inizializzo le strutture dati
     channel_list->channel=(channel_struct**)malloc(0);  	//inizializzo le strutture dati
+    channel_list->sem_channel=(sem_t*)malloc(0);  	//inizializzo le strutture dati
     
     
     //alloco e inizializzo il semaforo

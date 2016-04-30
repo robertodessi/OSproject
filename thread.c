@@ -86,8 +86,6 @@ void* connection_handler(void* arg) {
 				}
 				continue;
 			}	
-			
-			printf("ciao1\n");
 
 			/**INIZIO SEZIONE CRITICA**/
 			ret = sem_wait(sem);
@@ -148,7 +146,17 @@ void* connection_handler(void* arg) {
 			args->channel_list->channel = (channel_struct**) realloc(args->channel_list->channel,n*sizeof(channel_struct*));  
 			args->channel_list->channel[n-1] = my_channel;	//aggiungo il nuovo canale		
 			
-			/** TODO: creare il semaforo per il canale (sem_channel)**/				
+			args->channel_list->sem_channel = (sem_t*) realloc(args->channel_list->sem_channel,n*sizeof(sem_t));  
+			sem = sem_open(name_channel, O_CREAT|O_EXCL, 0666, 1);   //aggiungo il nuovo semaforo
+			if (sem == SEM_FAILED && errno == EEXIST) {
+				printf("already exists, let's unlink it...\n");
+				sem_unlink(name_channel);
+				printf("and then reopen it...\n");
+				sem = sem_open(name_channel, O_CREAT|O_EXCL, 0666, 1);
+			}
+			if (sem == SEM_FAILED) {
+				ERROR_HELPER(-1, "[FATAL ERROR] Could not create a semaphore");
+			}						
 						
 
 			ret = sem_post(sem);
@@ -173,6 +181,7 @@ void* connection_handler(void* arg) {
             /**TODO: join al canale**/
             connect = 1;
         }
+        
         //check if quit
         if (connect && recv_bytes == quit_command_len && !memcmp(buf, quit_command, quit_command_len)) {
             printf("quit canale\n");
@@ -208,7 +217,7 @@ void* connection_handler(void* arg) {
     pthread_exit(NULL);
 }
 
-
+/**TODO: togliere gli spazi alla fine del nome **/
 char* prendiNome(char* str, int len, size_t command_len) {
     char* res = (char*) malloc(sizeof(char) * (len-command_len));
     /* Warning: 

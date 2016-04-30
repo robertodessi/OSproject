@@ -9,17 +9,17 @@
 typedef struct {
     int dim; //dimensione dell'array client_desc
     int* client_desc; //array dei descrittori dei vari client connessi al canale
-    int id; //identificatore del canale
+    int id;  //identificatore del canale
     char* name_channel; //nome del canale
-    int owner;//descrittore del client creatore del canale
+    int owner;  //descrittore del client creatore del canale
 } channel_struct;
 
 
 //struttura dati che rappresenta la lista di canali
 typedef struct {
-    int num_channels; //dimensione dell'array channel
-    char** name_channel; //array dei nomi canale
-    channel_struct** channel;  //array di puntatori alla struttura dati canale  
+    int num_channels; 	//dimensione dell'array channel
+    char** name_channel; 	//array dei nomi canale
+    channel_struct** channel; 	//array di puntatori alla struttura dati canale  
     sem_t* sem_channel;
 } channel_list_struct;
 
