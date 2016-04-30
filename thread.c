@@ -20,6 +20,8 @@ void* connection_handler(void* arg) {
 
     //channel_list_struct* channel_list;
     channel_struct* my_channel;
+    //semaforo
+    sem_t* my_named_semaphore=NULL;
 
     int ret, recv_bytes;
     char* name_channel=NULL; //nome del canale
@@ -69,7 +71,7 @@ void* connection_handler(void* arg) {
 
         /**TODO: fare il log**/
 
-        // check if create 
+        // check if CREATE *************************************************** 
         /**  /create <name_channel>  **/
         if (!connect && !memcmp(buf, create_command, create_command_len)) {
             if (DEBUG) printf("try to create new channel\n");
@@ -99,9 +101,8 @@ void* connection_handler(void* arg) {
 			
 			
 			while(i < args->channel_list->num_channels){
-				printf("i name channel=%s\n",args->channel_list->name_channel[i]);
+				printf("name channel=%s\n",args->channel_list->name_channel[i]);
 				if(strcmp(name_channel,args->channel_list->name_channel[i])==0){ //equals
-					printf("strcompare");
 					nameIsPresent=1;  //se è presente setto il booleano a vero
 					break;					
 				}
@@ -115,7 +116,6 @@ void* connection_handler(void* arg) {
 						if (errno == EINTR) continue;
 						ERROR_HELPER(-1, "Cannot write to the socket");
 				} 
-				nameIsPresent=0;
 				ret = sem_post(sem);
 				ERROR_HELPER(ret, "error sem_post");
 				//FINE SEZIONE CRITICA//				
@@ -146,15 +146,15 @@ void* connection_handler(void* arg) {
 			args->channel_list->channel = (channel_struct**) realloc(args->channel_list->channel,n*sizeof(channel_struct*));  
 			args->channel_list->channel[n-1] = my_channel;	//aggiungo il nuovo canale		
 			
-			args->channel_list->sem_channel = (sem_t*) realloc(args->channel_list->sem_channel,n*sizeof(sem_t));  
-			sem = sem_open(name_channel, O_CREAT|O_EXCL, 0666, 1);   //aggiungo il nuovo semaforo
-			if (sem == SEM_FAILED && errno == EEXIST) {
+			//args->channel_list->sem_channel = (sem_t*) realloc(args->channel_list->sem_channel,n*sizeof(sem_t));  
+			my_named_semaphore = sem_open(name_channel, O_CREAT|O_EXCL, 0666, 1);   //aggiungo il nuovo semaforo
+			if (my_named_semaphore == SEM_FAILED && errno == EEXIST) {
 				printf("already exists, let's unlink it...\n");
 				sem_unlink(name_channel);
 				printf("and then reopen it...\n");
-				sem = sem_open(name_channel, O_CREAT|O_EXCL, 0666, 1);
+				my_named_semaphore = sem_open(name_channel, O_CREAT|O_EXCL, 0666, 1);
 			}
-			if (sem == SEM_FAILED) {
+			if (my_named_semaphore == SEM_FAILED) {
 				ERROR_HELPER(-1, "[FATAL ERROR] Could not create a semaphore");
 			}						
 						
@@ -174,12 +174,81 @@ void* connection_handler(void* arg) {
 			connect = 1;	//setto il flag di connessione a true	
             }
             
-        // check if join
+        // check if JOIN ***************************************************
         /**  /join <name_channel>  **/
-        if (!connect && recv_bytes == join_command_len && !memcmp(buf, join_command, join_command_len)) {
-            printf("join canale\n");
-            /**TODO: join al canale**/
-            connect = 1;
+        if (!connect && !memcmp(buf, join_command, join_command_len)) {
+            if (DEBUG) printf("try to join channel\n");                        
+
+            name_channel = prendiNome(buf, recv_bytes + 1,join_command_len); //prendo il nome del canale	
+            printf("nome= %s\n",name_channel);		
+			//controllo che il nome non sia vuoto
+			if(strlen(name_channel)==0){				 
+				 strcpy(msg,"il nome del canale non può essere vuoto\0");
+				 while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
+						if (errno == EINTR) continue;
+						ERROR_HELPER(-1, "Cannot write to the socket");
+				}
+				continue;
+			}	
+
+			/**INIZIO SEZIONE CRITICA PER LA LISTA**/
+			ret = sem_wait(sem);
+			ERROR_HELPER(ret, "error sem_wait");
+		
+
+			int i=0;
+			int nameIsPresent=0;  //booleano che indica se un nome è già stato preso oppure no
+			//controllo che il nome non sia già stato usato per un altro canale
+			
+			
+			while(i < args->channel_list->num_channels){
+				printf("name channel=%s\n",args->channel_list->name_channel[i]);
+				if(strcmp(name_channel,args->channel_list->name_channel[i])==0){ //equals
+					nameIsPresent=1;  //se è presente setto il booleano a vero
+					break;					
+				}
+				i++;
+			}
+						
+			//se il canale esiste
+			if(nameIsPresent){
+				my_named_semaphore = sem_open(name_channel, 0); // mode is 0: sem_open is not allowed to create it!
+				/**INIZIO SEZIONE CRITICA PER IL CANALE**/
+				ret = sem_wait(my_named_semaphore);
+				ERROR_HELPER(ret, "error sem_wait");
+				
+		
+				//aggiorno la struttura dati del canale	
+				int dim = ++(args->channel_list->channel[i]->dim);  //aumento di 1 il numero di parteciapnti al canale
+				args->channel_list->channel[i]->client_desc=(int*)realloc(args->channel_list->channel[i]->client_desc, dim*sizeof(int));
+				args->channel_list->channel[i]->client_desc[dim-1] = args->socket_desc; 	//aggiungo il nuovo membro al canale
+				
+				ret = sem_post(my_named_semaphore);
+				ERROR_HELPER(ret, "error sem_post");
+				/**FINE SEZIONE CRITICA PER IL CANALE**/
+				
+				strcpy(msg,"connesso al canale\0");
+				while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
+						if (errno == EINTR) continue;
+						ERROR_HELPER(-1, "Cannot write to the socket");
+				} 
+				
+				printChannel(args->channel_list->channel[i]);
+				connect = 1;				
+				
+			}
+			else{	//se il canale non esiste
+				strcpy(msg,"il canale non esiste\0");
+				while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
+						if (errno == EINTR) continue;
+						ERROR_HELPER(-1, "Cannot write to the socket");
+				} 
+			}
+			
+			ret = sem_post(sem);
+			ERROR_HELPER(ret, "error sem_post");
+			/**FINE SEZIONE CRITICA PER IL CANALE**/
+            
         }
         
         //check if quit

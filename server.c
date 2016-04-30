@@ -150,7 +150,6 @@ int main(int argc, char *argv[]) {
 		thread_args -> client_addr = client_addr;  //passo l'indirizzo del client
 		thread_args -> channel_list = channel_list;  //passo il puntatore alla lista dei canali
 		
-		printf("qui\n");
 
 		if (pthread_create(&thread, NULL, connection_handler, (void*)thread_args) != 0) {
 			fprintf(stderr, "Can't create a new thread, error %d\n", errno);
