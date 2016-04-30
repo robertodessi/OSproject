@@ -18,7 +18,7 @@ void* connection_handler(void* arg) {
     handler_args_t* args = (handler_args_t*) arg;
   
 
-    channel_list_struct* channel_list;
+    //channel_list_struct* channel_list;
     channel_struct* my_channel;
 
     int ret, recv_bytes;
@@ -33,7 +33,7 @@ void* connection_handler(void* arg) {
 	//buffer per i send
     char msg[1024];
     size_t msg_len;
-
+    
 
     /**COMMAND**/
 
@@ -91,16 +91,17 @@ void* connection_handler(void* arg) {
 			ret = sem_wait(sem);
 			ERROR_HELPER(ret, "error sem_wait");
 			
-			channel_list = *(args->channel_list); //mi salvo la channel_list_struct (per comodità) 
+			//channel_list = *(args->channel_list); //mi salvo la channel_list_struct (per comodità) 
 
 			int i=0;
 			int nameIsPresent=0;  //booleano che indica se un nome è già stato preso oppure no
 			//controllo che il nome non sia già stato usato per un altro canale
-			printf("num channel=%d\n",channel_list->num_channels);
+			printf("num channel=%d\n",args->channel_list->num_channels);
+			printf("%d\n",args->channel_list->name_channel);
 			
-			while(i < channel_list->num_channels){
-				printf("name channel=%s\n",channel_list->name_channel[i]);
-				if(strcmp(name_channel,channel_list->name_channel[i])==0){ //equals
+			while(i < args->channel_list->num_channels){
+				printf("name channel=%s\n",args->channel_list->name_channel[i]);
+				if(strcmp(name_channel,args->channel_list->name_channel[i])==0){ //equals
 					printf("strcompare");
 					nameIsPresent=1;  //se è presente setto il booleano a vero
 					break;					
@@ -140,15 +141,14 @@ void* connection_handler(void* arg) {
 
 
 			// aggiungo my_channel alla lista dei canali (channel_list)
-			int n=++(channel_list->num_channels);  //uso n per rendere il codice più leggibile
-			channel_list->name_channel = (char**) realloc(channel_list->name_channel,n*sizeof(char*));  
-			channel_list->name_channel[n]=name_channel;	//aggiungo il nuovo nome
-			printf("nome=%s\n",channel_list->name_channel[n]);
+			int n=++(args->channel_list->num_channels);  //uso n per rendere il codice più leggibile
+			args->channel_list->name_channel = (char**) realloc(args->channel_list->name_channel,n*sizeof(char*));  
+			args->channel_list->name_channel[n]=name_channel;	//aggiungo il nuovo nome
+			printf("nome=%s\n",args->channel_list->name_channel[n]);
 			
-			channel_list->channel = (channel_struct**) realloc(channel_list->channel,n*sizeof(channel_struct*));  
-			channel_list->channel[n] = my_channel;	//aggiungo il nuovo canale		
-			*(args->channel_list)=channel_list;	//aggiorno il puntatore
-			printf("nome=%s\n",channel_list->name_channel[n]);
+			args->channel_list->channel = (channel_struct**) realloc(args->channel_list->channel,n*sizeof(channel_struct*));  
+			args->channel_list->channel[n] = my_channel;	//aggiungo il nuovo canale		
+			printf("nome=%s\n",args->channel_list->name_channel[n]);
 			/** TODO: creare il semaforo per il canale (sem_channel)**/				
 						
 

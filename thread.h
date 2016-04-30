@@ -29,7 +29,7 @@ typedef struct {
 typedef struct handler_args_s {
     int socket_desc; //descrittore client
     struct sockaddr_in* client_addr; //address del client
-    channel_list_struct** channel_list;  //lista dei canali
+    channel_list_struct* channel_list;  //lista dei canali
 } handler_args_t;
 
 
