@@ -33,11 +33,13 @@ int main(int argc, char *argv[]) {
     // some fields are required to be filled with 0
     struct sockaddr_in server_addr = {0};
 
-    int sockaddr_len = sizeof(struct sockaddr_in); // we will reuse it for accept()
+    int sockaddr_len = sizeof(struct sockaddr_in); 	// we will reuse it for accept()
     
     //struttura che rappresenta la lista di tutti i canali
-    channel_list_struct channel_list;  
-    channel_list.num_channels=0; //inizialmente ci sono 0 canali
+    channel_list_struct*  channel_list=(channel_list_struct*)malloc(sizeof(channel_list_struct));
+    channel_list->num_channels=0; 						//inizialmente ci sono 0 canali
+    channel_list->name_channel=(char**)malloc(0);  		//inizializzo le strutture dati
+    channel_list->channel=(channel_struct**)malloc(0);  	//inizializzo le strutture dati
     
     
     //alloco e inizializzo il semaforo
@@ -46,9 +48,9 @@ int main(int argc, char *argv[]) {
 
     sem = sem_open(NAME_SEM, O_CREAT|O_EXCL, 0666, 1);
     if (sem == SEM_FAILED && errno == EEXIST) {
-        printf("already exists, let's unlink it...");
+        printf("already exists, let's unlink it...\n");
         sem_unlink(NAME_SEM);
-        printf("and then reopen it...");
+        printf("and then reopen it...\n");
         sem = sem_open(NAME_SEM, O_CREAT|O_EXCL, 0666, 1);
     }
     if (sem == SEM_FAILED) {
@@ -139,16 +141,16 @@ int main(int argc, char *argv[]) {
         
         logConnection(client_ip,client_port);
         
-        
 		//creo il thread che gestirà il client da ora in avanti
 		pthread_t thread;
 
 		// put arguments for the new thread into a buffer
-		handler_args_t* thread_args = malloc(sizeof(handler_args_t));
+		handler_args_t* thread_args = (handler_args_t*) malloc(sizeof(handler_args_t));
 		thread_args -> socket_desc = client_desc;  //passo il descrittore del client
 		thread_args -> client_addr = client_addr;  //passo l'indirizzo del client
-		thread_args -> channel_list = &channel_list;  //passo il puntatore alla lista dei canali
-	   
+		thread_args -> channel_list = channel_list;  //passo il puntatore alla lista dei canali
+		
+		printf("qui\n");
 
 		if (pthread_create(&thread, NULL, connection_handler, (void*)thread_args) != 0) {
 			fprintf(stderr, "Can't create a new thread, error %d\n", errno);
@@ -160,7 +162,7 @@ int main(int argc, char *argv[]) {
 		pthread_detach(thread); // I won't phtread_join() on this thread	
             
         // we can't just reset fields: we need a new buffer for client_addr!
-	client_addr = calloc(1, sizeof(struct sockaddr_in));
+		client_addr = calloc(1, sizeof(struct sockaddr_in));
         
     }
 

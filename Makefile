@@ -1,4 +1,4 @@
-CC = gcc -Wall -O1 -g
+CC = gcc -Wall -O1 -g 
 LDFLAGS = -lpthread
 
 all: server client_prova launcher
