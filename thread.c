@@ -58,7 +58,7 @@ void* connection_handler(void* arg) {
     uint16_t client_port = ntohs(args->client_addr->sin_port); // port number is an unsigned short
 
     while (1) {
-
+		
         // read message from client
         while ((recv_bytes = recv(args->socket_desc, buf, buf_len, 0)) < 0) {
             if (errno == EINTR) continue;
@@ -73,8 +73,10 @@ void* connection_handler(void* arg) {
         /**  /create <name_channel>  **/
         if (!connect && !memcmp(buf, create_command, create_command_len)) {
             if (DEBUG) printf("try to create new channel\n");
+                        
 
-            name_channel = prendiNome(buf, recv_bytes + 1,create_command_len); //prendo il nome del canale			
+            name_channel = prendiNome(buf, recv_bytes + 1,create_command_len); //prendo il nome del canale	
+            printf("%s\n",name_channel);		
 			//controllo che il nome non sia vuoto
 			if(strlen(name_channel)==0){				 
 				 strcpy(msg,"il nome del canale non può essere vuoto\0");
@@ -96,11 +98,10 @@ void* connection_handler(void* arg) {
 			int i=0;
 			int nameIsPresent=0;  //booleano che indica se un nome è già stato preso oppure no
 			//controllo che il nome non sia già stato usato per un altro canale
-			printf("num channel=%d\n",args->channel_list->num_channels);
-			printf("%d\n",args->channel_list->name_channel);
+			
 			
 			while(i < args->channel_list->num_channels){
-				printf("name channel=%s\n",args->channel_list->name_channel[i]);
+				printf("i name channel=%s\n",args->channel_list->name_channel[i]);
 				if(strcmp(name_channel,args->channel_list->name_channel[i])==0){ //equals
 					printf("strcompare");
 					nameIsPresent=1;  //se è presente setto il booleano a vero
@@ -108,7 +109,7 @@ void* connection_handler(void* arg) {
 				}
 				i++;
 			}
-			printf("ciao2\n");
+			
 			//se è il nome è già stato preso avviso il client
 			if(nameIsPresent){
 				strcpy(msg,"il nome del canale esiste già, scegline un altro\0");
@@ -124,8 +125,6 @@ void* connection_handler(void* arg) {
 			}
 
 						
-			printf("ciao3\n");
-
 			if (DEBUG) printf("create new channel\n");
 
 			channel_struct* my_channel = (channel_struct*) malloc(sizeof (channel_struct));
@@ -142,13 +141,13 @@ void* connection_handler(void* arg) {
 
 			// aggiungo my_channel alla lista dei canali (channel_list)
 			int n=++(args->channel_list->num_channels);  //uso n per rendere il codice più leggibile
+		
 			args->channel_list->name_channel = (char**) realloc(args->channel_list->name_channel,n*sizeof(char*));  
-			args->channel_list->name_channel[n]=name_channel;	//aggiungo il nuovo nome
-			printf("nome=%s\n",args->channel_list->name_channel[n]);
+			args->channel_list->name_channel[n-1]=name_channel;	//aggiungo il nuovo nome
 			
 			args->channel_list->channel = (channel_struct**) realloc(args->channel_list->channel,n*sizeof(channel_struct*));  
-			args->channel_list->channel[n] = my_channel;	//aggiungo il nuovo canale		
-			printf("nome=%s\n",args->channel_list->name_channel[n]);
+			args->channel_list->channel[n-1] = my_channel;	//aggiungo il nuovo canale		
+			
 			/** TODO: creare il semaforo per il canale (sem_channel)**/				
 						
 
@@ -165,8 +164,8 @@ void* connection_handler(void* arg) {
 			} 
 
 			connect = 1;	//setto il flag di connessione a true	
-
             }
+            
         // check if join
         /**  /join <name_channel>  **/
         if (!connect && recv_bytes == join_command_len && !memcmp(buf, join_command, join_command_len)) {
