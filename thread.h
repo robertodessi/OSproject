@@ -20,7 +20,6 @@ typedef struct {
     int num_channels; 	//dimensione dell'array channel
     char** name_channel; 	//array dei nomi canale
     channel_struct** channel; 	//array di puntatori alla struttura dati canale  
-    sem_t* sem_channel;
 } channel_list_struct;
 
 
@@ -41,5 +40,11 @@ char* prendiNome(char* str, int len, size_t command_len);
 
 //stampa le info di un canale
 void printChannel(channel_struct* channel);
+
+//invia a @dest (descrittore del client) la stringa @s
+void invio(char* s, int dest);
+
+//riceve da @dest (descrittore del client) e salva in @buf il messaggio - @buf_len indica la lunghezza del buffer
+int ricevi(char* buf, size_t buf_len, int mitt);
 
 #endif 

@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     channel_list->num_channels=0; 						    //inizialmente ci sono 0 canali
     channel_list->name_channel=(char**)malloc(0);  		    //inizializzo le strutture dati
     channel_list->channel=(channel_struct**)malloc(0);  	//inizializzo le strutture dati
-    channel_list->sem_channel=(sem_t*)malloc(0);  	//inizializzo le strutture dati
+
     
     
     //alloco e inizializzo il semaforo

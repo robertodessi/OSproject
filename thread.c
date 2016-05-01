@@ -9,6 +9,7 @@
 #include <sys/types.h>
 
 
+
 //====================================
 //			THREAD
 //====================================
@@ -17,25 +18,20 @@ void* connection_handler(void* arg) {
 	  
     handler_args_t* args = (handler_args_t*) arg;
   
-
-    //channel_list_struct* channel_list;
-    channel_struct* my_channel;
-    //semaforo
-    sem_t* my_named_semaphore=NULL;
-
+    channel_struct* my_channel=NULL;  //channel_list_struct* channel_list;
+    
+    sem_t* my_named_semaphore=NULL;  //semaforo
+	char* name_channel=NULL; 		 //nome del canale
+    
     int ret, recv_bytes;
-    char* name_channel=NULL; //nome del canale
-
+    
     int connect = 0; //flag che indica se il client è connesso ad un canale oppure no
+    int command = 0; //flag che indica se il client ha inviato un comando oppure no
 	
 	//buffer per i recv
     char buf[1024];
     size_t buf_len = sizeof (buf);
-	
-	//buffer per i send
-    char msg[1024];
-    size_t msg_len;
-    
+	    
 
     /**COMMAND**/
 
@@ -61,31 +57,27 @@ void* connection_handler(void* arg) {
 
     while (1) {
 		
+		
         // read message from client
-        while ((recv_bytes = recv(args->socket_desc, buf, buf_len, 0)) < 0) {
-            if (errno == EINTR) continue;
-            ERROR_HELPER(-1, "Cannot read from socket");
-        }
-
-        /** TODO: distinguere dai comandi i messaggi scritti dal client ed inoltrarli a tutti gli altri client connessi nel canale*/
-
+        recv_bytes = ricevi(buf,buf_len,args->socket_desc);
+        
+        command=0;  //setto il flag a false
+		
+		
         /**TODO: fare il log**/
 
-        // check if CREATE *************************************************** 
+        // ****************************   CREATE   ********************************************
         /**  /create <name_channel>  **/
-        if (!connect && !memcmp(buf, create_command, create_command_len)) {
+        if (!connect && !memcmp(buf, create_command, create_command_len)) {            
             if (DEBUG) printf("try to create new channel\n");
-                        
+            
+            command=1; //setto il flag a true                                    
 
             name_channel = prendiNome(buf, recv_bytes + 1,create_command_len); //prendo il nome del canale	
-            printf("%s\n",name_channel);		
+            
 			//controllo che il nome non sia vuoto
-			if(strlen(name_channel)==0){				 
-				 strcpy(msg,"il nome del canale non può essere vuoto\0");
-				 while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
-						if (errno == EINTR) continue;
-						ERROR_HELPER(-1, "Cannot write to the socket");
-				}
+			if(strlen(name_channel)==0){
+				invio("il nome del canale non può essere vuoto\0",args->socket_desc);				 
 				continue;
 			}	
 
@@ -111,11 +103,7 @@ void* connection_handler(void* arg) {
 			
 			//se è il nome è già stato preso avviso il client
 			if(nameIsPresent){
-				strcpy(msg,"il nome del canale esiste già, scegline un altro\0");
-				 while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
-						if (errno == EINTR) continue;
-						ERROR_HELPER(-1, "Cannot write to the socket");
-				} 
+				invio("il nome del canale esiste già, scegline un altro\0",args->socket_desc);
 				ret = sem_post(sem);
 				ERROR_HELPER(ret, "error sem_post");
 				//FINE SEZIONE CRITICA//				
@@ -164,30 +152,23 @@ void* connection_handler(void* arg) {
 			/**FINE SEZIONE CRITICA**/
 
 			if (DEBUG) printChannel(my_channel);
-			
-			strcpy(msg,"canale creato con successo\0");
-			while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
-					if (errno == EINTR) continue;
-					ERROR_HELPER(-1, "Cannot write to the socket");
-			} 
+			invio("canale creato con successo\0",args->socket_desc);
 
 			connect = 1;	//setto il flag di connessione a true	
             }
             
-        // check if JOIN ***************************************************
+        // ****************************   JOIN   ********************************************
         /**  /join <name_channel>  **/
         if (!connect && !memcmp(buf, join_command, join_command_len)) {
-            if (DEBUG) printf("try to join channel\n");                        
+            if (DEBUG) printf("try to join channel\n");  
+            
+            command=1; //setto il flag a true                      
 
             name_channel = prendiNome(buf, recv_bytes + 1,join_command_len); //prendo il nome del canale	
-            printf("nome= %s\n",name_channel);		
+         	
 			//controllo che il nome non sia vuoto
-			if(strlen(name_channel)==0){				 
-				 strcpy(msg,"il nome del canale non può essere vuoto\0");
-				 while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
-						if (errno == EINTR) continue;
-						ERROR_HELPER(-1, "Cannot write to the socket");
-				}
+			if(strlen(name_channel)==0){
+				invio("il nome del canale non può essere vuoto\0",args->socket_desc);						 
 				continue;
 			}	
 
@@ -202,7 +183,6 @@ void* connection_handler(void* arg) {
 			
 			
 			while(i < args->channel_list->num_channels){
-				printf("name channel=%s\n",args->channel_list->name_channel[i]);
 				if(strcmp(name_channel,args->channel_list->name_channel[i])==0){ //equals
 					nameIsPresent=1;  //se è presente setto il booleano a vero
 					break;					
@@ -217,32 +197,26 @@ void* connection_handler(void* arg) {
 				ret = sem_wait(my_named_semaphore);
 				ERROR_HELPER(ret, "error sem_wait");
 				
-		
+				my_channel = args->channel_list->channel[i];  //salvo in my_channel il canale in cui sono attualmente collegato
+				
 				//aggiorno la struttura dati del canale	
-				int dim = ++(args->channel_list->channel[i]->dim);  //aumento di 1 il numero di parteciapnti al canale
-				args->channel_list->channel[i]->client_desc=(int*)realloc(args->channel_list->channel[i]->client_desc, dim*sizeof(int));
-				args->channel_list->channel[i]->client_desc[dim-1] = args->socket_desc; 	//aggiungo il nuovo membro al canale
+				int dim = ++(my_channel->dim);  //aumento di 1 il numero di parteciapnti al canale
+				my_channel->client_desc=(int*)realloc(my_channel->client_desc, dim*sizeof(int));
+				my_channel->client_desc[dim-1] = args->socket_desc; 	//aggiungo il nuovo membro al canale			
+				
 				
 				ret = sem_post(my_named_semaphore);
 				ERROR_HELPER(ret, "error sem_post");
 				/**FINE SEZIONE CRITICA PER IL CANALE**/
 				
-				strcpy(msg,"connesso al canale\0");
-				while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
-						if (errno == EINTR) continue;
-						ERROR_HELPER(-1, "Cannot write to the socket");
-				} 
+				invio("connesso al canale\0",args->socket_desc);		
 				
 				printChannel(args->channel_list->channel[i]);
 				connect = 1;				
 				
 			}
 			else{	//se il canale non esiste
-				strcpy(msg,"il canale non esiste\0");
-				while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
-						if (errno == EINTR) continue;
-						ERROR_HELPER(-1, "Cannot write to the socket");
-				} 
+				invio("il canale non esiste\0",args->socket_desc);
 			}
 			
 			ret = sem_post(sem);
@@ -251,15 +225,14 @@ void* connection_handler(void* arg) {
             
         }
         
-        //check if quit
+        // ****************************   QUIT   ********************************************
         if (connect && recv_bytes == quit_command_len && !memcmp(buf, quit_command, quit_command_len)) {
-            printf("quit canale\n");
-            strcpy(msg,"quit dal canale\0");
-            while ( (ret = send(args->socket_desc, msg, sizeof(char)*strlen(msg)+1, 0)) < 0 ) {
-					if (errno == EINTR) continue;
-					ERROR_HELPER(-1, "Cannot write to the socket");
-			}
-
+            if (DEBUG) printf("quit canale\n");
+            
+            command=1;
+            
+            invio("quit dal canale\0",args->socket_desc);
+            
             //chi esce NON è il propretario del canale
             if (my_channel->owner != args->socket_desc) {
 
@@ -272,6 +245,15 @@ void* connection_handler(void* arg) {
             connect = 0;
         }
         /**TODO: gestire altri comandi (e.g. /quit, /delete, ecc...)**/
+        
+        //inoltro dei messaggi
+        if(connect && !command){
+			int i=0;
+			for(i=0; i < my_channel->dim; i++){  //inoltro del messaggio escuso se sesso
+				if(my_channel->client_desc[i] != args->socket_desc) invio(buf,my_channel->client_desc[i]);
+			}
+			
+		}
     }
 
     // close socket
@@ -309,4 +291,22 @@ void printChannel(channel_struct* channel) {
     printf("client_desc: ");
     for (int i = 0; i < channel->dim; i++)printf("%d, ", channel->client_desc[i]);
     printf("\n\n");
+}
+
+
+void invio(char* s, int dest){	
+	int ret;
+   	while ( (ret = send(dest, s, sizeof(char)*strlen(s)+1, 0)) < 0 ) {
+		if (errno == EINTR) continue;
+		ERROR_HELPER(-1, "Cannot write to the socket");
+	}
+}
+
+int ricevi(char* buf, size_t buf_len, int mitt){
+	int recv_bytes=0;
+	while ((recv_bytes = recv(mitt, buf, buf_len, 0)) < 0) {
+		if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot read from socket");
+    }
+    return recv_bytes;
 }
