@@ -19,7 +19,7 @@ To compile and launch in Linux with GNOME:
 To compile and launch in MAC OSX:
 
 1. Open the launcher.c file and replace the following line
-  `ret = system("open -a Terminal.app ./client_prova");`
+  `ret = system("gnome-terminal -x ./client_prova");`
   with
   `ret = system("open -a Terminal.app ./client_prova");`
 
