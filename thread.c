@@ -46,6 +46,10 @@ void* connection_handler(void* arg) {
     //QUIT
     char* quit_command = QUIT_COMMAND;
     size_t quit_command_len = strlen(quit_command);
+    
+    //DELETE
+    char* delete_command = DELETE_COMMAND;
+    size_t delete_command_len = strlen(delete_command);
 
     /**END_COMMAND **/
 
@@ -221,11 +225,12 @@ void* connection_handler(void* arg) {
 			
 			ret = sem_post(sem);
 			ERROR_HELPER(ret, "error sem_post");
-			/**FINE SEZIONE CRITICA PER IL CANALE**/
+			/**FINE SEZIONE CRITICA PER LA LISTA**/
             
         }
         
         // ****************************   QUIT   ********************************************
+        /**    /quit    */
         if (connect && recv_bytes == quit_command_len && !memcmp(buf, quit_command, quit_command_len)) {
             if (DEBUG) printf("quit canale\n");
             
@@ -233,20 +238,49 @@ void* connection_handler(void* arg) {
             
             invio("quit dal canale\0",args->socket_desc);
             
+            my_named_semaphore = sem_open(name_channel, 0); // mode is 0: sem_open is not allowed to create it!
+			/**INIZIO SEZIONE CRITICA PER IL CANALE**/
+			ret = sem_wait(my_named_semaphore); 
+			ERROR_HELPER(ret, "error sem_wait");  
+			        
             //chi esce NON è il propretario del canale
             if (my_channel->owner != args->socket_desc) {
-
-                /**TODO: cancellare da my_channel il suo descrittore*/
+				int i;
+                for(i=0; i < my_channel->dim; i++){  
+					if(my_channel->client_desc[i] == args->socket_desc){  //trovo il descrittore nel canale
+						my_channel->client_desc[my_channel->dim-1]=my_channel->client_desc[i];
+						my_channel->client_desc=(int*)realloc(my_channel->client_desc,sizeof(int)*my_channel->dim-1);
+						my_channel->dim--;
+						break;
+					}					
+				}
 
             } else {
                 /**TODO: gestire in caso in cui il creatore esce dal canale**/
             }
+            ret = sem_post(my_named_semaphore);
+			ERROR_HELPER(ret, "error sem_post");
+			/**FINE SEZIONE CRITICA PER IL CANALE**/
 
             connect = 0;
         }
-        /**TODO: gestire altri comandi (e.g. /quit, /delete, ecc...)**/
        
-        //inoltro dei messaggi
+        // ****************************   DELETE   ********************************************
+        /**    /delete    */
+		if (connect && recv_bytes == delete_command_len && !memcmp(buf, delete_command, delete_command_len)) {
+			if (DEBUG) printf("delete canale\n");
+			
+			command=1;
+			
+			/**TODO: delete channel**/
+			
+			connect=0;
+	    }
+     
+     
+		        /**TODO: gestire altri comandi (es. /show )**/
+       
+        // ********************** inoltro dei messaggi  *************************************
         if(connect && !command){
 			if(DEBUG) printf("inoltro\n");
 			int i=0;
