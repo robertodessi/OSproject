@@ -14,6 +14,7 @@ int main(){
             exit(-1);
         } else if (pid == 0) {
             // child: client_prova
+           
             ret=system("gnome-terminal -x ./client_prova");
             
         } else {

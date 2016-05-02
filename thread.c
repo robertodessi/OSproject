@@ -53,16 +53,15 @@ void* connection_handler(void* arg) {
     // parse client IP address and port
     char client_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(args->client_addr->sin_addr), client_ip, INET_ADDRSTRLEN);
-    uint16_t client_port = ntohs(args->client_addr->sin_port); // port number is an unsigned short
+    //uint16_t client_port = ntohs(args->client_addr->sin_port); // port number is an unsigned short
 
     while (1) {
-		
-		
+				
         // read message from client
         recv_bytes = ricevi(buf,buf_len,args->socket_desc);
         
         command=0;  //setto il flag a false
-		
+	
 		
         /**TODO: fare il log**/
 
@@ -70,11 +69,14 @@ void* connection_handler(void* arg) {
         /**  /create <name_channel>  **/
         if (!connect && !memcmp(buf, create_command, create_command_len)) {            
             if (DEBUG) printf("try to create new channel\n");
-            
+
+            char* name_channel = prendiNome(buf, recv_bytes + 1,create_command_len); //prendo il nome del canale			
+			            
             command=1; //setto il flag a true                                    
 
             name_channel = prendiNome(buf, recv_bytes + 1,create_command_len); //prendo il nome del canale	
             
+
 			//controllo che il nome non sia vuoto
 			if(strlen(name_channel)==0){
 				invio("il nome del canale non può essere vuoto\0",args->socket_desc);				 
@@ -89,11 +91,9 @@ void* connection_handler(void* arg) {
 
 			int i=0;
 			int nameIsPresent=0;  //booleano che indica se un nome è già stato preso oppure no
-			//controllo che il nome non sia già stato usato per un altro canale
 			
-			
+			//controllo che il nome non sia già stato usato per un altro canale			
 			while(i < args->channel_list->num_channels){
-				printf("name channel=%s\n",args->channel_list->name_channel[i]);
 				if(strcmp(name_channel,args->channel_list->name_channel[i])==0){ //equals
 					nameIsPresent=1;  //se è presente setto il booleano a vero
 					break;					
@@ -113,7 +113,7 @@ void* connection_handler(void* arg) {
 						
 			if (DEBUG) printf("create new channel\n");
 
-			channel_struct* my_channel = (channel_struct*) malloc(sizeof (channel_struct));
+			my_channel = (channel_struct*) malloc(sizeof (channel_struct));
 			my_channel -> dim = 1; //quando si crea il canale c'è solo il proprietario
 			my_channel -> client_desc = (int*) malloc(sizeof (int)); //allocazione dinamica
 			my_channel -> client_desc[0] = args->socket_desc; //aggiungo il proprietario ai client connessi al canale
@@ -144,8 +144,7 @@ void* connection_handler(void* arg) {
 			}
 			if (my_named_semaphore == SEM_FAILED) {
 				ERROR_HELPER(-1, "[FATAL ERROR] Could not create a semaphore");
-			}						
-						
+			}												
 
 			ret = sem_post(sem);
 			ERROR_HELPER(ret, "error sem_post");
@@ -155,6 +154,7 @@ void* connection_handler(void* arg) {
 			invio("canale creato con successo\0",args->socket_desc);
 
 			connect = 1;	//setto il flag di connessione a true	
+
             }
             
         // ****************************   JOIN   ********************************************
@@ -245,9 +245,10 @@ void* connection_handler(void* arg) {
             connect = 0;
         }
         /**TODO: gestire altri comandi (e.g. /quit, /delete, ecc...)**/
-        
+       
         //inoltro dei messaggi
         if(connect && !command){
+			if(DEBUG) printf("inoltro\n");
 			int i=0;
 			for(i=0; i < my_channel->dim; i++){  //inoltro del messaggio escuso se sesso
 				if(my_channel->client_desc[i] != args->socket_desc) invio(buf,my_channel->client_desc[i]);
@@ -292,7 +293,6 @@ void printChannel(channel_struct* channel) {
     for (int i = 0; i < channel->dim; i++)printf("%d, ", channel->client_desc[i]);
     printf("\n\n");
 }
-
 
 void invio(char* s, int dest){	
 	int ret;
