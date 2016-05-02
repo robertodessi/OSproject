@@ -60,17 +60,18 @@ void* connection_handler(void* arg) {
     //uint16_t client_port = ntohs(args->client_addr->sin_port); // port number is an unsigned short
 
     while (1) {
+		
+		if(DEBUG) printList(args->channel_list);
 				
         // read message from client
         recv_bytes = ricevi(buf,buf_len,args->socket_desc);
+        if(DEBUG) printf("buf ricevuto=%s|\n",buf);
         
         command=0;  //setto il flag a false
 	
 		
-        /**TODO: fare il log**/
+        /**TODO: fare il log**/ 
         
-        
-        printList(args->channel_list);
 
         // ****************************   CREATE   ********************************************
         /**  /create <name_channel>  **/
@@ -80,7 +81,7 @@ void* connection_handler(void* arg) {
             command=1; //setto il flag a true                                    
 
             name_channel = prendiNome(buf, recv_bytes + 1,create_command_len); //prendo il nome del canale	
-            
+            if (DEBUG)printf("nome letto=%s|\n",name_channel);
 
 			//controllo che il nome non sia vuoto
 			if(strlen(name_channel)==0){
@@ -95,7 +96,7 @@ void* connection_handler(void* arg) {
 			//channel_list = *(args->channel_list); //mi salvo la channel_list_struct (per comodità) 
 
 			int i=0;
-			int nameIsPresent=0;  //booleano che indica se un nome è già stato preso oppure no
+			int nameIsPresent=0;  //booleano che indica se un nome è già stato preso oppure no 
 			
 			//controllo che il nome non sia già stato usato per un altro canale			
 			while(i < args->channel_list->num_channels){
@@ -282,7 +283,6 @@ void* connection_handler(void* arg) {
 			/**INIZIO SEZIONE CRITICA PER IL CANALE**/
 			ret = sem_wait(my_named_semaphore); 
 			ERROR_HELPER(ret, "error sem_wait"); 
-			printf("z\n");
 			//solo il proprietario può eliminare il canale
 			if (my_channel->owner == args->socket_desc) {
 				
@@ -296,32 +296,36 @@ void* connection_handler(void* arg) {
 				
 				//aggiorno la lista dei canali
 				int i;
-				printf("a\n");
 				for(i=0;i<args->channel_list->num_channels;i++){
-					printf("b\n");
 					if(strcmp(args->channel_list->name_channel[i],my_channel->name_channel)==0){
-						printf("c\n");
 						//tolgo dalla lista il canale
 						args->channel_list->channel[i]=args->channel_list->channel[args->channel_list->num_channels-1];
 						args->channel_list->channel=(channel_struct**)realloc(args->channel_list->channel, sizeof(channel_struct*)*args->channel_list->num_channels-1);
-						printf("d\n");
+						
 						//tolgo dalla lista il nome
 						free(args->channel_list->name_channel[i]); 
 						args->channel_list->name_channel[i]=args->channel_list->name_channel[args->channel_list->num_channels-1];
 						args->channel_list->name_channel=(char**)realloc(args->channel_list->name_channel, sizeof(char*)*args->channel_list->num_channels-1);
-						printf("e\n");
+						args->channel_list->num_channels--;
+						
 					}
 				}
 				
 				ret = sem_post(sem);
 				ERROR_HELPER(ret, "error sem_post");
 				/**FINE SEZIONE CRITICA PER LA LISTA**/
-				printf("f\n");
+
 				//deallocazione risorse canale
 				free(my_channel->client_desc);
-				free(my_channel->name_channel);
+				//free(my_channel->name_channel);  NON decommentare altrimenti si va in errore
+				
+				/* ho voluto lasciarlo per essere sicuro di non fare lo stesso errore
+				 * SPIEGAZIONE: la stringa che contiene viene puntata anche dal puntatore nella lista dei canali
+				 * poichè ho già deallocato questo spazio di memoria qualche riga prima partendo dalla lista sarebbe un errore deallocarla un'altra volta
+				 * */	
+				 			  
 				free(my_channel);
-				printf("g\n");
+				my_channel=NULL;
 			}
 			else invio("solo il proprietario può eliminare il canale\0",args->socket_desc);
 			
