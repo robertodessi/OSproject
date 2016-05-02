@@ -68,14 +68,15 @@ void* connection_handler(void* arg) {
 	
 		
         /**TODO: fare il log**/
+        
+        
+        printList(args->channel_list);
 
         // ****************************   CREATE   ********************************************
         /**  /create <name_channel>  **/
         if (!connect && !memcmp(buf, create_command, create_command_len)) {            
             if (DEBUG) printf("try to create new channel\n");
-
-            char* name_channel = prendiNome(buf, recv_bytes + 1,create_command_len); //prendo il nome del canale			
-			            
+		            
             command=1; //setto il flag a true                                    
 
             name_channel = prendiNome(buf, recv_bytes + 1,create_command_len); //prendo il nome del canale	
@@ -87,7 +88,7 @@ void* connection_handler(void* arg) {
 				continue;
 			}	
 
-			/**INIZIO SEZIONE CRITICA**/
+			/**INIZIO SEZIONE CRITICA PER LA LISTA**/
 			ret = sem_wait(sem);
 			ERROR_HELPER(ret, "error sem_wait");
 			
@@ -126,6 +127,7 @@ void* connection_handler(void* arg) {
 			/*WARNING!! 
 			 * il nome del canale è ridondante!
 		     */
+		     /** TODO: l'id non serve a nulla*/
 			my_channel -> id = 0; //setto un id al canale. Per ora a tutti zero 		
 
 
@@ -152,7 +154,7 @@ void* connection_handler(void* arg) {
 
 			ret = sem_post(sem);
 			ERROR_HELPER(ret, "error sem_post");
-			/**FINE SEZIONE CRITICA**/
+			/**FINE SEZIONE CRITICA PER LA LISTA**/
 
 			if (DEBUG) printChannel(my_channel);
 			invio("canale creato con successo\0",args->socket_desc);
@@ -235,53 +237,108 @@ void* connection_handler(void* arg) {
             if (DEBUG) printf("quit canale\n");
             
             command=1;
-            
-            invio("quit dal canale\0",args->socket_desc);
-            
-            my_named_semaphore = sem_open(name_channel, 0); // mode is 0: sem_open is not allowed to create it!
+                        
+			my_named_semaphore = sem_open(name_channel, 0); // mode is 0: sem_open is not allowed to create it!
 			/**INIZIO SEZIONE CRITICA PER IL CANALE**/
 			ret = sem_wait(my_named_semaphore); 
 			ERROR_HELPER(ret, "error sem_wait");  
-			        
             //chi esce NON è il propretario del canale
             if (my_channel->owner != args->socket_desc) {
 				int i;
                 for(i=0; i < my_channel->dim; i++){  
 					if(my_channel->client_desc[i] == args->socket_desc){  //trovo il descrittore nel canale
-						my_channel->client_desc[my_channel->dim-1]=my_channel->client_desc[i];
+						my_channel->client_desc[i]=my_channel->client_desc[my_channel->dim-1];
 						my_channel->client_desc=(int*)realloc(my_channel->client_desc,sizeof(int)*my_channel->dim-1);
 						my_channel->dim--;
+						my_channel=NULL;
+						
+						connect = 0;  //setto il flag di connessione a false
+						invio("quit dal canale\0",args->socket_desc);
 						break;
 					}					
 				}
 
             } else {
                 /**TODO: gestire in caso in cui il creatore esce dal canale**/
+                //per ora invio un messaggio al client
+                invio("Sei il proprietario non puoi abbandonare il gruppo!\nUsa il comando /delete per cancellare il gruppo ed uscire\0",args->socket_desc);
             }
             ret = sem_post(my_named_semaphore);
 			ERROR_HELPER(ret, "error sem_post");
 			/**FINE SEZIONE CRITICA PER IL CANALE**/
 
-            connect = 0;
+            
         }
        
         // ****************************   DELETE   ********************************************
         /**    /delete    */
 		if (connect && recv_bytes == delete_command_len && !memcmp(buf, delete_command, delete_command_len)) {
 			if (DEBUG) printf("delete canale\n");
-			
+						
 			command=1;
 			
-			/**TODO: delete channel**/
+			my_named_semaphore = sem_open(name_channel, 0); // mode is 0: sem_open is not allowed to create it!
+			
+			/**INIZIO SEZIONE CRITICA PER IL CANALE**/
+			ret = sem_wait(my_named_semaphore); 
+			ERROR_HELPER(ret, "error sem_wait"); 
+			printf("z\n");
+			//solo il proprietario può eliminare il canale
+			if (my_channel->owner == args->socket_desc) {
+				
+				
+				/**TODO: avvertire gli altri thread */
+				
+				
+				/**INIZIO SEZIONE CRITICA PER LA LISTA**/
+				ret = sem_wait(sem);
+				ERROR_HELPER(ret, "error sem_wait");
+				
+				//aggiorno la lista dei canali
+				int i;
+				printf("a\n");
+				for(i=0;i<args->channel_list->num_channels;i++){
+					printf("b\n");
+					if(strcmp(args->channel_list->name_channel[i],my_channel->name_channel)==0){
+						printf("c\n");
+						//tolgo dalla lista il canale
+						args->channel_list->channel[i]=args->channel_list->channel[args->channel_list->num_channels-1];
+						args->channel_list->channel=(channel_struct**)realloc(args->channel_list->channel, sizeof(channel_struct*)*args->channel_list->num_channels-1);
+						printf("d\n");
+						//tolgo dalla lista il nome
+						free(args->channel_list->name_channel[i]); 
+						args->channel_list->name_channel[i]=args->channel_list->name_channel[args->channel_list->num_channels-1];
+						args->channel_list->name_channel=(char**)realloc(args->channel_list->name_channel, sizeof(char*)*args->channel_list->num_channels-1);
+						printf("e\n");
+					}
+				}
+				
+				ret = sem_post(sem);
+				ERROR_HELPER(ret, "error sem_post");
+				/**FINE SEZIONE CRITICA PER LA LISTA**/
+				printf("f\n");
+				//deallocazione risorse canale
+				free(my_channel->client_desc);
+				free(my_channel->name_channel);
+				free(my_channel);
+				printf("g\n");
+			}
+			else invio("solo il proprietario può eliminare il canale\0",args->socket_desc);
+			
+			ret = sem_post(my_named_semaphore);
+			ERROR_HELPER(ret, "error sem_post");
+			/**FINE SEZIONE CRITICA PER IL CANALE**/ 
 			
 			connect=0;
 	    }
      
      
 		        /**TODO: gestire altri comandi (es. /show )**/
+		        
        
-        // ********************** inoltro dei messaggi  *************************************
+        // ********************** SEND MESSAGE  *************************************
         if(connect && !command){
+			/** TODO: decidere cosa fare se inoltra /create e /join */
 			if(DEBUG) printf("inoltro\n");
 			int i=0;
 			for(i=0; i < my_channel->dim; i++){  //inoltro del messaggio escuso se sesso
@@ -342,5 +399,22 @@ int ricevi(char* buf, size_t buf_len, int mitt){
 		if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot read from socket");
     }
+    int end=recv_bytes/sizeof(char);
+    if(end<buf_len) buf[end]='\0';
+    else buf[buf_len]='\0';    
     return recv_bytes;
 }
+
+
+void printList(channel_list_struct* list){
+	int i;
+	for(i=0;i < list->num_channels;i++){
+		printChannel(list->channel[i]);
+		printf("\n");
+	}
+	
+}
+
+
+
+
