@@ -27,6 +27,7 @@
 #define CREATE_COMMAND  "/create"
 #define JOIN_COMMAND    "/join"
 #define QUIT_COMMAND    "/quit"
+#define DELETE_COMMAND    "/delete"
 #define SERVER_PORT     2016
 #define NAME_SEM "common_sem"
 
