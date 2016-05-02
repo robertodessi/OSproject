@@ -41,6 +41,9 @@ char* prendiNome(char* str, int len, size_t command_len);
 //stampa le info di un canale
 void printChannel(channel_struct* channel);
 
+//stampa la lista di canali
+void printList(channel_list_struct* list);
+
 //invia a @dest (descrittore del client) la stringa @s
 void invio(char* s, int dest);
 
