@@ -3,6 +3,8 @@
 
 #include "common.h" 
 
+#define FLAG    0
+#define SIZE  125
 
 
 //struttura dati che rappresenta il canale
@@ -32,6 +34,13 @@ typedef struct handler_args_s {
 } handler_args_t;
 
 
+//struttura dati per la coda di messaggi
+typedef struct {
+    long mtype;
+    char mtext[SIZE];
+} mymsg;
+
+
 //funzione che esegue il thread del client
 void* connection_handler(void* arg);
 
@@ -48,6 +57,8 @@ void printList(channel_list_struct* list);
 void invio(char* s, int dest);
 
 //riceve da @dest (descrittore del client) e salva in @buf il messaggio - @buf_len indica la lunghezza del buffer
-int ricevi(char* buf, size_t buf_len, int mitt);
+int ricevi(char* buf, size_t buf_len, int mitt, int* connect, channel_struct* my_channel);
+
+int leggiMSG();
 
 #endif 
