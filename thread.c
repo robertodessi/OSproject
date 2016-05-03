@@ -287,7 +287,10 @@ void* connection_handler(void* arg) {
 			if (my_channel->owner == args->socket_desc) {
 				
 				
-				/**TODO: avvertire gli altri thread */
+				/**TODO avvertire tutti gli altri thread del canale */
+				// avvertire gli altri thread ponendo a zero la dimensione
+				my_channel->dim=0;
+				
 				
 				
 				/**INIZIO SEZIONE CRITICA PER LA LISTA**/
@@ -425,6 +428,9 @@ int ricevi(char* buf, size_t buf_len, int mitt){
 		ERROR_HELPER(ret, "Unable to select()");
 		
 		if (ret == 0) continue; // timeout expired
+		
+		/**TODO: fare il controllo se il canale è stato cancellato **/
+		
 		
 		// ret is 1: read available data!
 		shouldStop=1;
