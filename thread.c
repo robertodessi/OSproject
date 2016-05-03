@@ -326,6 +326,10 @@ void* connection_handler(void* arg) {
 				 			  
 				free(my_channel);
 				my_channel=NULL;
+				
+				connect=0;
+				
+				/**TODO unlink e close del semaforo*/
 			}
 			else invio("solo il proprietario può eliminare il canale\0",args->socket_desc);
 			
@@ -333,7 +337,7 @@ void* connection_handler(void* arg) {
 			ERROR_HELPER(ret, "error sem_post");
 			/**FINE SEZIONE CRITICA PER IL CANALE**/ 
 			
-			connect=0;
+			
 	    }
      
      
@@ -398,14 +402,42 @@ void invio(char* s, int dest){
 }
 
 int ricevi(char* buf, size_t buf_len, int mitt){
+	int ret,shouldStop=0;
 	int recv_bytes=0;
-	while ((recv_bytes = recv(mitt, buf, buf_len, 0)) < 0) {
-		if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot read from socket");
-    }
-    int end=recv_bytes/sizeof(char);
-    if(end<buf_len) buf[end]='\0';
-    else buf[buf_len]='\0';    
+	
+	struct timeval timeout;
+    fd_set read_descriptors;
+    int nfds = mitt + 1;
+    
+    
+    while(!shouldStop){
+		// check every 1.5 seconds 
+		timeout.tv_sec  = 1;
+		timeout.tv_usec = 500000;
+		
+		FD_ZERO(&read_descriptors);
+		FD_SET(mitt, &read_descriptors);
+		
+		/** perform select() **/
+		ret = select(nfds, &read_descriptors, NULL, NULL, &timeout);
+		
+		if (ret == -1 && errno == EINTR) continue;
+		ERROR_HELPER(ret, "Unable to select()");
+		
+		if (ret == 0) continue; // timeout expired
+		
+		// ret is 1: read available data!
+		shouldStop=1;
+		while ((recv_bytes = recv(mitt, buf, buf_len, 0)) < 0) {
+			if (errno == EINTR) continue;
+			ERROR_HELPER(-1, "Cannot read from socket");
+		}
+		int end=recv_bytes/sizeof(char);
+		if(end<buf_len) buf[end]='\0';
+		else buf[buf_len]='\0';  
+		 
+	}
+	
     return recv_bytes;
 }
 

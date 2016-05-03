@@ -13,9 +13,8 @@ int main(){
             printf("errore\n");
             exit(-1);
         } else if (pid == 0) {
-            // child: client_prova
-           
-            ret=system("gnome-terminal -x ./client_prova");
+            // child: client_prova           
+            ret=system("xterm -hold ./client_prova");
             
         } else {
             // father: server
