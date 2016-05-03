@@ -326,7 +326,7 @@ void* connection_handler(void* arg) {
 
 				for(i=0; i < my_channel->dim; i++){  //inoltro del messaggio escuso se sesso
 					if(my_channel->client_desc[i] != args->socket_desc) {						
-						if ( msgsnd(my_channel->client_desc[i],&msg , SIZE, IPC_NOWAIT) == -1 ) {
+						if ( msgsnd(my_channel->client_desc[i],&msg , SIZE, FLAG) == -1 ) {
 							printf("cannot return response to the client\n");
 							//exit(-1);
 						}
