@@ -7,6 +7,8 @@
 #include <pthread.h>
 #include <unistd.h> //close()
 #include <sys/types.h>
+#include <sys/msg.h>
+
 
 
 
@@ -14,18 +16,24 @@
 //			THREAD
 //====================================
 
+
+mymsg  recv_message;
+int id_coda;
+
+
 void* connection_handler(void* arg) {
 	  
     handler_args_t* args = (handler_args_t*) arg;
   
-    channel_struct* my_channel=NULL;  //channel_list_struct* channel_list;
+    int connect = 0; //flag che indica se il client è connesso ad un canale oppure no
+	channel_struct* my_channel=NULL;  //channel_list_struct* channel_list;
     
     sem_t* my_named_semaphore=NULL;  //semaforo
 	char* name_channel=NULL; 		 //nome del canale
     
-    int ret, recv_bytes;
+    int i,ret, recv_bytes;
     
-    int connect = 0; //flag che indica se il client è connesso ad un canale oppure no
+    
     int command = 0; //flag che indica se il client ha inviato un comando oppure no
 	
 	//buffer per i recv
@@ -58,13 +66,26 @@ void* connection_handler(void* arg) {
     char client_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(args->client_addr->sin_addr), client_ip, INET_ADDRSTRLEN);
     //uint16_t client_port = ntohs(args->client_addr->sin_port); // port number is an unsigned short
+    
+    int key=args->socket_desc;
+    
+    id_coda = msgget(key, IPC_CREAT|IPC_EXCL|0666);
+    if( id_coda == -1){
+		id_coda = msgget(key, IPC_CREAT|0666);
+		ret = msgctl(id_coda,IPC_RMID,0);
+		id_coda = msgget(key, IPC_CREAT|IPC_EXCL|0666);
+		if( id_coda == -1 ){
+			printf("cannot install server queue, please check with the problem\n");
+			exit(-1);
+		}
+	}
 
     while (1) {
 		
 		if(DEBUG) printList(args->channel_list);
 				
         // read message from client
-        recv_bytes = ricevi(buf,buf_len,args->socket_desc);
+        recv_bytes = ricevi(buf,buf_len,args->socket_desc,&connect,my_channel);
         if(DEBUG) printf("buf ricevuto=%s|\n",buf);
         
         command=0;  //setto il flag a false
@@ -236,16 +257,28 @@ void* connection_handler(void* arg) {
         /**    /quit    */
         if (connect && recv_bytes == quit_command_len && !memcmp(buf, quit_command, quit_command_len)) {
             if (DEBUG) printf("quit canale\n");
-            
+           
             command=1;
-                        
+                
+                         
 			my_named_semaphore = sem_open(name_channel, 0); // mode is 0: sem_open is not allowed to create it!
 			/**INIZIO SEZIONE CRITICA PER IL CANALE**/
 			ret = sem_wait(my_named_semaphore); 
 			ERROR_HELPER(ret, "error sem_wait");  
+			
+			 // controllare se nel frattempo il canale è stato chiuso
+			if (leggiMSG()==0) { 
+				printf("nessun messaggio\n");
+			}
+			else{
+				connect=0;
+				my_channel=NULL;
+				printf("asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
+				continue;
+			}       
+			
             //chi esce NON è il propretario del canale
             if (my_channel->owner != args->socket_desc) {
-				int i;
                 for(i=0; i < my_channel->dim; i++){  
 					if(my_channel->client_desc[i] == args->socket_desc){  //trovo il descrittore nel canale
 						my_channel->client_desc[i]=my_channel->client_desc[my_channel->dim-1];
@@ -284,13 +317,23 @@ void* connection_handler(void* arg) {
 			ret = sem_wait(my_named_semaphore); 
 			ERROR_HELPER(ret, "error sem_wait"); 
 			//solo il proprietario può eliminare il canale
-			if (my_channel->owner == args->socket_desc) {
+			if (my_channel->owner == args->socket_desc) {	
 				
 				
-				/**TODO avvertire tutti gli altri thread del canale */
-				// avvertire gli altri thread ponendo a zero la dimensione
-				my_channel->dim=0;
+				mymsg msg;
+				msg.mtype=1;
+				strcpy(msg.mtext,"delete\0");
+
+				for(i=0; i < my_channel->dim; i++){  //inoltro del messaggio escuso se sesso
+					if(my_channel->client_desc[i] != args->socket_desc) {						
+						if ( msgsnd(my_channel->client_desc[i],&msg , SIZE, IPC_NOWAIT) == -1 ) {
+							printf("cannot return response to the client\n");
+							//exit(-1);
+						}
+					}
+				}
 				
+				printf("tutti sono usciti\n");
 				
 				
 				/**INIZIO SEZIONE CRITICA PER LA LISTA**/
@@ -298,7 +341,6 @@ void* connection_handler(void* arg) {
 				ERROR_HELPER(ret, "error sem_wait");
 				
 				//aggiorno la lista dei canali
-				int i;
 				for(i=0;i<args->channel_list->num_channels;i++){
 					if(strcmp(args->channel_list->name_channel[i],my_channel->name_channel)==0){
 						//tolgo dalla lista il canale
@@ -351,10 +393,27 @@ void* connection_handler(void* arg) {
         if(connect && !command){
 			/** TODO: decidere cosa fare se inoltra /create e /join */
 			if(DEBUG) printf("inoltro\n");
-			int i=0;
-			for(i=0; i < my_channel->dim; i++){  //inoltro del messaggio escuso se sesso
-				if(my_channel->client_desc[i] != args->socket_desc) invio(buf,my_channel->client_desc[i]);
+			
+			my_named_semaphore = sem_open(name_channel, 0); // mode is 0: sem_open is not allowed to create it!
+			/**INIZIO SEZIONE CRITICA PER IL CANALE**/
+			ret = sem_wait(my_named_semaphore); 
+			ERROR_HELPER(ret, "error sem_wait");  
+	
+			if ( (leggiMSG())==0){
+				//inoltro del messaggio escuso se stesso
+				int i=0;
+				for(i=0; i < my_channel->dim; i++){  
+					if(my_channel->client_desc[i] != args->socket_desc) invio(buf,my_channel->client_desc[i]);
+				}
 			}
+			else {
+				connect=0;
+				my_channel=NULL;				
+			}
+
+			ret = sem_post(my_named_semaphore);
+			ERROR_HELPER(ret, "error sem_post");
+			/**FINE SEZIONE CRITICA PER IL CANALE**/ 
 			
 		}
     }
@@ -404,7 +463,7 @@ void invio(char* s, int dest){
 	}
 }
 
-int ricevi(char* buf, size_t buf_len, int mitt){
+int ricevi(char* buf, size_t buf_len, int mitt, int* connect, channel_struct* my_channel){
 	int ret,shouldStop=0;
 	int recv_bytes=0;
 	
@@ -412,6 +471,7 @@ int ricevi(char* buf, size_t buf_len, int mitt){
     fd_set read_descriptors;
     int nfds = mitt + 1;
     
+    mymsg recv_message;
     
     while(!shouldStop){
 		// check every 1.5 seconds 
@@ -429,7 +489,13 @@ int ricevi(char* buf, size_t buf_len, int mitt){
 		
 		if (ret == 0) continue; // timeout expired
 		
-		/**TODO: fare il controllo se il canale è stato cancellato **/
+		int ret;
+		if ((ret=leggiMSG())==1) { 
+			*connect=0;
+			my_channel=NULL;
+			printf("asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
+			
+		}
 		
 		
 		// ret is 1: read available data!
@@ -447,6 +513,20 @@ int ricevi(char* buf, size_t buf_len, int mitt){
     return recv_bytes;
 }
 
+
+int leggiMSG(){
+		if ( msgrcv(id_coda, &recv_message, sizeof(mymsg), 1, IPC_NOWAIT)  != -1 ) { 
+			return 1;  //messaggio ricevuto
+			
+		}
+		else if(errno!=ENOMSG){  //ENOMSG: IPC_NOWAIT asserted, and no message exists in the queue to satisfy the request
+			printf("ERROR, please check with the problem\n");
+			ERROR_HELPER(-1,"errore lettura messaggio"); 
+			return -1;  //errore!!
+		}
+		else return 0;  //nessun messaggio ricevuto
+
+}
 
 void printList(channel_list_struct* list){
 	int i;
