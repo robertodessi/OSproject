@@ -20,6 +20,7 @@
 mymsg  recv_message;
 int id_coda;
 int key;
+sem_t* my_named_semaphore;
 
 void* connection_handler(void* arg) {
 	  
@@ -28,7 +29,7 @@ void* connection_handler(void* arg) {
     int connect = 0; //flag che indica se il client è connesso ad un canale oppure no
 	channel_struct* my_channel=NULL;  //channel_list_struct* channel_list;
     
-    sem_t* my_named_semaphore=NULL;  //semaforo
+    my_named_semaphore=NULL;  //semaforo
 	char* name_channel=NULL; 		 //nome del canale
     
     int i,ret, recv_bytes;
@@ -365,10 +366,6 @@ void* connection_handler(void* arg) {
 					}
 				}
 				
-				ret = sem_post(sem);
-				ERROR_HELPER(ret, "error sem_post");
-				/**FINE SEZIONE CRITICA PER LA LISTA**/
-
 				//deallocazione risorse canale
 				free(my_channel->client_desc);
 				//free(my_channel->name_channel);  NON decommentare altrimenti si va in errore
@@ -381,9 +378,15 @@ void* connection_handler(void* arg) {
 				free(my_channel);
 				my_channel=NULL;
 				
+				sem_unlink(name_channel);
+				
+				ret = sem_post(sem);
+				ERROR_HELPER(ret, "error sem_post");
+				/**FINE SEZIONE CRITICA PER LA LISTA**/			
+				
 				connect=0;
 				
-				/**TODO unlink e close del semaforo*/
+		
 			}
 			else invio("solo il proprietario può eliminare il canale\0",args->socket_desc);
 			
@@ -498,16 +501,17 @@ int ricevi(char* buf, size_t buf_len, int mitt, int* connect, channel_struct* my
 		
 		if (ret == -1 && errno == EINTR) continue;
 		ERROR_HELPER(ret, "Unable to select()");
-		
-		if (ret == 0) continue; // timeout expired
-		
-		if ((ret=leggiMSG())==1) { 
+			
+		if (leggiMSG()==1) { 
 		
 			*connect=0;
 			my_channel=NULL;
+			//sem_close(my_named_semaphore);
 			printf("22222222 asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
 			invio("sei stato disconnesso\0",key);	
 		}
+		
+		if (ret == 0) continue; // timeout expired
 		
 		
 		// ret is 1: read available data!
@@ -527,8 +531,9 @@ int ricevi(char* buf, size_t buf_len, int mitt, int* connect, channel_struct* my
 
 
 int leggiMSG(){
+	printf("");
 		if ( msgrcv(id_coda, &recv_message, sizeof(mymsg), 1, IPC_NOWAIT)  != -1 ) { 
-			printf("messaggio ricevuto\n");
+			//printf("messaggio ricevuto\n");
 			return 1;  //messaggio ricevuto
 			
 		}
@@ -539,7 +544,7 @@ int leggiMSG(){
 			return -1;  //errore!!
 		}
 		else {
-			printf("nessun messaggio\n");
+			//printf("nessun messaggio\n");
 			return 0;  //nessun messaggio ricevuto
 		}
 
