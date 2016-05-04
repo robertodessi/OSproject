@@ -16,17 +16,4 @@ To compile and launch in Linux with GNOME:
 
 3. `make run `
 
-To compile and launch in MAC OSX:
-
-1. Open the launcher.c file and replace the following line
-  `ret = system("gnome-terminal -x ./client_prova");`
-  with
-  `ret = system("open -a Terminal.app ./client_prova");`
-
-2. Save the file
-
-3. Open terminal in the project directory
-
-4. `make `
-
-5. `make run `
+4. Have fun messaging with all your friends!
