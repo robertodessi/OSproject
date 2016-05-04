@@ -17,25 +17,28 @@
 //====================================
 
 
-mymsg  recv_message;
-int id_coda;
-int key;
-sem_t* my_named_semaphore;
+mymsg  recv_message; //messaggio ricevuto dalla coda dei messaggi
+int id_coda;  //id della coda di messaggi di questo thread
+int key;  //chiave per la coda (vedi: msgget)
+sem_t* my_named_semaphore;  //nome del semaforo del canale
+
+int is_connect; //flag che indica se il client è connesso ad un canale oppure no
+channel_struct* my_channel;  //channel_list_struct* channel_list;
+
 
 void* connection_handler(void* arg) {
 	  
-    handler_args_t* args = (handler_args_t*) arg;
-  
-    int connect = 0; //flag che indica se il client è connesso ad un canale oppure no
-	channel_struct* my_channel=NULL;  //channel_list_struct* channel_list;
-    
+    handler_args_t* args = (handler_args_t*) arg; 
+	
     my_named_semaphore=NULL;  //semaforo
 	char* name_channel=NULL; 		 //nome del canale
     
-    int i,ret, recv_bytes;
-    
+    int i,ret, recv_bytes;    
     
     int command = 0; //flag che indica se il client ha inviato un comando oppure no
+    
+	is_connect = 0; 
+	my_channel=NULL; 
 	
 	//buffer per i recv
     char buf[1024];
@@ -80,13 +83,15 @@ void* connection_handler(void* arg) {
 			exit(-1);
 		}
 	}
+	
+	printf("\tla mia %d\n",id_coda);
 
     while (1) {
 		
 		if(DEBUG) printList(args->channel_list);
 			
         // read message from client
-        recv_bytes = ricevi(buf,buf_len,args->socket_desc,&connect,my_channel);
+        recv_bytes = ricevi(buf,buf_len,args->socket_desc);
         //if(DEBUG) printf("buf ricevuto=%s|\n",buf);
         
         command=0;  //setto il flag a false
@@ -97,7 +102,7 @@ void* connection_handler(void* arg) {
 
         // ****************************   CREATE   ********************************************
         /**  /create <name_channel>  **/
-        if (!connect && !memcmp(buf, create_command, create_command_len)) {            
+        if (!is_connect && !memcmp(buf, create_command, create_command_len)) {            
             if (DEBUG) printf("try to create new channel\n");
 		            
             command=1; //setto il flag a true                                    
@@ -182,13 +187,13 @@ void* connection_handler(void* arg) {
 			if (DEBUG) printChannel(my_channel);
 			invio("canale creato con successo\0",args->socket_desc);
 
-			connect = 1;	//setto il flag di connessione a true	
+			is_connect = 1;	//setto il flag di connessione a true	
 
             }
             
         // ****************************   JOIN   ********************************************
         /**  /join <name_channel>  **/
-        if (!connect && !memcmp(buf, join_command, join_command_len)) {
+        if (!is_connect && !memcmp(buf, join_command, join_command_len)) {
             if (DEBUG) printf("try to join channel\n");  
             
             command=1; //setto il flag a true                      
@@ -241,7 +246,7 @@ void* connection_handler(void* arg) {
 				invio("connesso al canale\0",args->socket_desc);		
 				
 				printChannel(args->channel_list->channel[i]);
-				connect = 1;				
+				is_connect = 1;				
 				
 			}
 			else{	//se il canale non esiste
@@ -256,7 +261,7 @@ void* connection_handler(void* arg) {
         
         // ****************************   QUIT   ********************************************
         /**    /quit    */
-        if (connect && recv_bytes == quit_command_len && !memcmp(buf, quit_command, quit_command_len)) {
+        if (is_connect && recv_bytes == quit_command_len && !memcmp(buf, quit_command, quit_command_len)) {
             if (DEBUG) printf("quit canale\n");
            
             command=1;
@@ -272,12 +277,8 @@ void* connection_handler(void* arg) {
 				
 				printf("nessun messaggio\n");
 			}
-			else{
-				
-				connect=0;
-				my_channel=NULL;
-				printf("111111 asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
-				invio("sei stato disconnesso\0",args->socket_desc);	
+			else{				
+				esci();
 				continue;
 			}       
 			
@@ -290,7 +291,7 @@ void* connection_handler(void* arg) {
 						my_channel->dim--;
 						my_channel=NULL;
 						
-						connect = 0;  //setto il flag di connessione a false
+						is_connect = 0;  //setto il flag di connessione a false
 						invio("quit dal canale\0",args->socket_desc);
 						break;
 					}					
@@ -310,7 +311,7 @@ void* connection_handler(void* arg) {
        
         // ****************************   DELETE   ********************************************
         /**    /delete    */
-		if (connect && recv_bytes == delete_command_len && !memcmp(buf, delete_command, delete_command_len)) {
+		if (is_connect && recv_bytes == delete_command_len && !memcmp(buf, delete_command, delete_command_len)) {
 			if (DEBUG) printf("delete canale\n");
 						
 			command=1;
@@ -323,30 +324,49 @@ void* connection_handler(void* arg) {
 			//solo il proprietario può eliminare il canale
 			if (my_channel->owner == args->socket_desc) {	
 				
+				//tramite la coda di messaggi avverto tutti gli altri thread
 				
-				mymsg msg;
-				msg.mtype=1;
-				strcpy(msg.mtext,"delete\0");
+				mymsg msg;  //struttura per il messaggio da inviare
+				msg.mtype=1; //header del messaggio. 1:delete  2:sem_close
+				strcpy(msg.mtext,"delete\0");  //testo del messaggio
 
 				for(i=0; i < my_channel->dim; i++){  //inoltro del messaggio escuso se sesso
 					if(my_channel->client_desc[i] != args->socket_desc) {	
-						printf("invio il messaggio a tutti\n");
-						int id_coda_other = msgget(my_channel->client_desc[i], IPC_EXCL|0666);
+						int id_coda_other = msgget(my_channel->client_desc[i], IPC_EXCL|0666);  //prendo la coda di messaggi di un client connesso...
 						if( id_coda_other == -1 ){
 							printf("cannot open server queue, please check with the problem\n");
-							//return(-1);
+							ERROR_HELPER(-1,"errore coda");
 						}					
-						if ( msgsnd(id_coda_other,&msg , SIZE, FLAG) == -1 ) {
+						if ( msgsnd(id_coda_other,&msg , SIZE, FLAG) == -1 ) {  //...gli invio il messaggio
 							printf("cannot return response to the client\n");
-							//exit(-1);
-						}
+							ERROR_HELPER(-1,"errore coda");
+						}else printf("invio a %d al canale %d\n",my_channel->client_desc[i],id_coda_other);			
 					}
 				}
 				
-				printf("tutti sono usciti\n");
+				//ora attendo la conferma che tutti abbiano fatto la sem_close
+				//utilizzo il tipo 2 per i messaggi di sem_close
+				//aspetto la conferma da tutti (tranne se stesso)
+				/*
+				for(i=0; i < my_channel->dim; i++){  
+					printf("\tscolto su %d\n",id_coda);
+					if(my_channel->client_desc[i] != args->socket_desc) {	
+						if ( msgrcv(id_coda, &recv_message, sizeof(mymsg), 2, FLAG)  != -1 ) { 
+							ERROR_HELPER(-1,"errore coda messaggi");
+						}
+						else{ 
+							if (DEBUG)printf("111111111 asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
+							printf("messaggio ricevuto");
+						}
+					}
+				}
+				*/
+				
 				
 				
 				/**INIZIO SEZIONE CRITICA PER LA LISTA**/
+				if(DEBUG)printf("tutti sono usciti\n");
+				
 				ret = sem_wait(sem);
 				ERROR_HELPER(ret, "error sem_wait");
 				
@@ -378,13 +398,15 @@ void* connection_handler(void* arg) {
 				free(my_channel);
 				my_channel=NULL;
 				
+				sem_close(my_named_semaphore);
 				sem_unlink(name_channel);
 				
 				ret = sem_post(sem);
 				ERROR_HELPER(ret, "error sem_post");
 				/**FINE SEZIONE CRITICA PER LA LISTA**/			
 				
-				connect=0;
+				invio("canale eliminato\0",args->socket_desc);
+				is_connect=0;
 				
 		
 			}
@@ -402,7 +424,7 @@ void* connection_handler(void* arg) {
 		        
        
         // ********************** SEND MESSAGE  *************************************
-        if(connect && !command){
+        if(is_connect && !command){
 			/** TODO: decidere cosa fare se inoltra /create e /join */
 			if(DEBUG) printf("inoltro\n");
 			
@@ -412,7 +434,6 @@ void* connection_handler(void* arg) {
 			ERROR_HELPER(ret, "error sem_wait");  
 	
 			if ( (leggiMSG())==0){
-				printf("e\n");
 				//inoltro del messaggio escuso se stesso
 				int i=0;
 				for(i=0; i < my_channel->dim; i++){  
@@ -420,10 +441,7 @@ void* connection_handler(void* arg) {
 				}
 			}
 			else {
-				printf("f\n");
-				connect=0;
-				my_channel=NULL;	
-				invio("sei stato disconnesso\0",args->socket_desc);			
+				esci();	
 			}
 
 			ret = sem_post(my_named_semaphore);
@@ -445,6 +463,110 @@ void* connection_handler(void* arg) {
     pthread_exit(NULL);
 }
 
+
+void invio(char* s, int dest){	
+	int ret;
+   	while ( (ret = send(dest, s, sizeof(char)*strlen(s)+1, 0)) < 0 ) {
+		if (errno == EINTR) continue;
+		ERROR_HELPER(-1, "Cannot write to the socket");
+	}
+}
+
+int ricevi(char* buf, size_t buf_len, int mitt){
+	int ret,shouldStop=0;
+	int recv_bytes=0;
+	
+	struct timeval timeout;
+    fd_set read_descriptors;
+    int nfds = mitt + 1;
+    
+   
+    
+    while(!shouldStop){
+		// check every 1.5 seconds 
+		/*
+		timeout.tv_sec  = 1;
+		timeout.tv_usec = 500000;
+		
+		FD_ZERO(&read_descriptors);
+		FD_SET(mitt, &read_descriptors);
+		
+		
+		ret = select(nfds, &read_descriptors, NULL, NULL, &timeout);
+		
+		if (ret == -1 && errno == EINTR) continue;
+		ERROR_HELPER(ret, "Unable to select()");
+		*/
+		
+		//controllo periodicamente se è arrivato qualche messaggio
+		if (leggiMSG()) {  
+			esci();
+		}
+		
+		//if (ret == 0) continue; // timeout expired
+		
+		
+		// ret is 1: read available data!
+		
+		
+		while ((recv_bytes = recv(mitt, buf, buf_len, 0)) < 0) {
+			if (errno == EINTR) continue;
+			ERROR_HELPER(-1, "Cannot read from socket");
+		}
+		int end=recv_bytes/sizeof(char);
+		if(end<buf_len) buf[end]='\0';
+		else buf[buf_len]='\0';  
+		shouldStop=1;
+		
+	}
+	
+    return recv_bytes;
+}
+
+
+int leggiMSG(){
+	//utilizzo il tipo 1 per i messaggi di delete
+	
+	if ( msgrcv(id_coda, &recv_message, sizeof(mymsg), 1, IPC_NOWAIT)  != -1 ) { 
+		printf("%d messaggio ricevuto\n",key);
+		return 1;  //messaggio ricevuto			
+	}
+	else if(errno!=ENOMSG){  //ENOMSG: IPC_NOWAIT asserted, and no message exists in the queue to satisfy the request
+		ERROR_HELPER(-1,"errore lettura messaggio"); 
+		return -1;  //errore!!
+	}
+	else {
+		printf("nessun messaggio %d coda %d\n",key,id_coda);
+		return 0;  //nessun messaggio ricevuto
+	}
+}
+
+void esci(){
+	//il canale sta per essere eliminato quindi esco
+	if (DEBUG)printf("asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
+	is_connect=0;
+	sem_close(my_named_semaphore);	
+/*	
+	//avverto il proprietario di aver fatto la sem_close!!
+	mymsg msg;
+	msg.mtype=2;  //header del messaggio. 1:delete  2:sem_close
+	strcpy(msg.mtext,"semclose\0");
+	
+	int id_coda_other = msgget(my_channel->client_desc[0], IPC_EXCL|0666);  //prendo la coda di messaggi del proprietario...
+	if( id_coda_other == -1 ){
+		printf("cannot open server queue, please check with the problem\n");
+		ERROR_HELPER(-1,"errore coda");
+	}					
+	if ( msgsnd(id_coda_other,&msg , SIZE, FLAG) == -1 ) {  //...gli invio il messaggio
+		printf("cannot return response to the client\n");
+		ERROR_HELPER(-1,"errore coda");
+	}
+	else if (DEBUG)printf("invio a %d of type %ld - receive %s\n", id_coda_other, msg.mtype, msg.mtext); 
+*/	
+	my_channel=NULL;		
+	invio("sei stato disconnesso dal canale\0",key);	//avverto il client che è stato disconnesso dal canale
+}
+
 /**TODO: togliere gli spazi alla fine del nome **/
 char* prendiNome(char* str, int len, size_t command_len) {
     char* res = (char*) malloc(sizeof(char) * (len-command_len));
@@ -459,96 +581,7 @@ char* prendiNome(char* str, int len, size_t command_len) {
     return res;
 }
 
-void printChannel(channel_struct* channel) {
-    printf("\nCHANNEL\n");
-    printf("name: %s\n", channel->name_channel);
-    printf("id: %d\n", channel->id);
-    printf("owner: %d\n", channel->owner);
-    printf("dimension: %d\n", channel->dim);
-    printf("client_desc: ");
-    for (int i = 0; i < channel->dim; i++)printf("%d, ", channel->client_desc[i]);
-    printf("\n\n");
-}
 
-void invio(char* s, int dest){	
-	int ret;
-   	while ( (ret = send(dest, s, sizeof(char)*strlen(s)+1, 0)) < 0 ) {
-		if (errno == EINTR) continue;
-		ERROR_HELPER(-1, "Cannot write to the socket");
-	}
-}
-
-int ricevi(char* buf, size_t buf_len, int mitt, int* connect, channel_struct* my_channel){
-	int ret,shouldStop=0;
-	int recv_bytes=0;
-	
-	struct timeval timeout;
-    fd_set read_descriptors;
-    int nfds = mitt + 1;
-    
-   
-    
-    while(!shouldStop){
-		// check every 1.5 seconds 
-		timeout.tv_sec  = 1;
-		timeout.tv_usec = 500000;
-		
-		FD_ZERO(&read_descriptors);
-		FD_SET(mitt, &read_descriptors);
-		
-		/** perform select() **/
-		ret = select(nfds, &read_descriptors, NULL, NULL, &timeout);
-		
-		if (ret == -1 && errno == EINTR) continue;
-		ERROR_HELPER(ret, "Unable to select()");
-			
-		if (leggiMSG()==1) { 
-		
-			*connect=0;
-			my_channel=NULL;
-			//sem_close(my_named_semaphore);
-			printf("22222222 asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
-			invio("sei stato disconnesso\0",key);	
-		}
-		
-		if (ret == 0) continue; // timeout expired
-		
-		
-		// ret is 1: read available data!
-		shouldStop=1;
-		while ((recv_bytes = recv(mitt, buf, buf_len, 0)) < 0) {
-			if (errno == EINTR) continue;
-			ERROR_HELPER(-1, "Cannot read from socket");
-		}
-		int end=recv_bytes/sizeof(char);
-		if(end<buf_len) buf[end]='\0';
-		else buf[buf_len]='\0';  
-		 
-	}
-	
-    return recv_bytes;
-}
-
-
-int leggiMSG(){
-	printf("");
-		if ( msgrcv(id_coda, &recv_message, sizeof(mymsg), 1, IPC_NOWAIT)  != -1 ) { 
-			//printf("messaggio ricevuto\n");
-			return 1;  //messaggio ricevuto
-			
-		}
-		else if(errno!=ENOMSG){  //ENOMSG: IPC_NOWAIT asserted, and no message exists in the queue to satisfy the request
-			printf("errore lettura messaggio\n");
-			printf("ERROR, please check with the problem\n");
-			ERROR_HELPER(-1,"errore lettura messaggio"); 
-			return -1;  //errore!!
-		}
-		else {
-			//printf("nessun messaggio\n");
-			return 0;  //nessun messaggio ricevuto
-		}
-
-}
 
 void printList(channel_list_struct* list){
 	int i;
@@ -560,5 +593,16 @@ void printList(channel_list_struct* list){
 }
 
 
+
+void printChannel(channel_struct* channel) {
+    printf("\nCHANNEL\n");
+    printf("name: %s\n", channel->name_channel);
+    printf("id: %d\n", channel->id);
+    printf("owner: %d\n", channel->owner);
+    printf("dimension: %d\n", channel->dim);
+    printf("client_desc: ");
+    for (int i = 0; i < channel->dim; i++)printf("%d, ", channel->client_desc[i]);
+    printf("\n\n");
+}
 
 
