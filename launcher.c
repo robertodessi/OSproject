@@ -14,9 +14,12 @@ int main(){
             exit(-1);
         } else if (pid == 0) {
             // child: client_prova
-           
-            ret=system("gnome-terminal -x ./client_prova");
-            
+#ifdef __linux__
+            ret=system("xterm -hold ./client_prova");
+#endif
+#ifdef  __APPLE__ && __MACH__
+            ret = system("open -a Terminal.app ./client_prova");
+#endif
         } else {
             // father: server
             ret=system("./server");
