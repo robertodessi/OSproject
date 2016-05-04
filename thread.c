@@ -19,7 +19,7 @@
 
 mymsg  recv_message;
 int id_coda;
-
+int key;
 
 void* connection_handler(void* arg) {
 	  
@@ -67,7 +67,7 @@ void* connection_handler(void* arg) {
     inet_ntop(AF_INET, &(args->client_addr->sin_addr), client_ip, INET_ADDRSTRLEN);
     //uint16_t client_port = ntohs(args->client_addr->sin_port); // port number is an unsigned short
     
-    int key=args->socket_desc;
+    key=args->socket_desc;
     
     id_coda = msgget(key, IPC_CREAT|IPC_EXCL|0666);
     if( id_coda == -1){
@@ -83,10 +83,10 @@ void* connection_handler(void* arg) {
     while (1) {
 		
 		if(DEBUG) printList(args->channel_list);
-				
+			
         // read message from client
         recv_bytes = ricevi(buf,buf_len,args->socket_desc,&connect,my_channel);
-        if(DEBUG) printf("buf ricevuto=%s|\n",buf);
+        //if(DEBUG) printf("buf ricevuto=%s|\n",buf);
         
         command=0;  //setto il flag a false
 	
@@ -268,12 +268,15 @@ void* connection_handler(void* arg) {
 			
 			 // controllare se nel frattempo il canale è stato chiuso
 			if (leggiMSG()==0) { 
+				
 				printf("nessun messaggio\n");
 			}
 			else{
+				
 				connect=0;
 				my_channel=NULL;
-				printf("asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
+				printf("111111 asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
+				invio("sei stato disconnesso\0",args->socket_desc);	
 				continue;
 			}       
 			
@@ -325,8 +328,14 @@ void* connection_handler(void* arg) {
 				strcpy(msg.mtext,"delete\0");
 
 				for(i=0; i < my_channel->dim; i++){  //inoltro del messaggio escuso se sesso
-					if(my_channel->client_desc[i] != args->socket_desc) {						
-						if ( msgsnd(my_channel->client_desc[i],&msg , SIZE, FLAG) == -1 ) {
+					if(my_channel->client_desc[i] != args->socket_desc) {	
+						printf("invio il messaggio a tutti\n");
+						int id_coda_other = msgget(my_channel->client_desc[i], IPC_EXCL|0666);
+						if( id_coda_other == -1 ){
+							printf("cannot open server queue, please check with the problem\n");
+							//return(-1);
+						}					
+						if ( msgsnd(id_coda_other,&msg , SIZE, FLAG) == -1 ) {
 							printf("cannot return response to the client\n");
 							//exit(-1);
 						}
@@ -400,6 +409,7 @@ void* connection_handler(void* arg) {
 			ERROR_HELPER(ret, "error sem_wait");  
 	
 			if ( (leggiMSG())==0){
+				printf("e\n");
 				//inoltro del messaggio escuso se stesso
 				int i=0;
 				for(i=0; i < my_channel->dim; i++){  
@@ -407,8 +417,10 @@ void* connection_handler(void* arg) {
 				}
 			}
 			else {
+				printf("f\n");
 				connect=0;
-				my_channel=NULL;				
+				my_channel=NULL;	
+				invio("sei stato disconnesso\0",args->socket_desc);			
 			}
 
 			ret = sem_post(my_named_semaphore);
@@ -471,7 +483,7 @@ int ricevi(char* buf, size_t buf_len, int mitt, int* connect, channel_struct* my
     fd_set read_descriptors;
     int nfds = mitt + 1;
     
-    mymsg recv_message;
+   
     
     while(!shouldStop){
 		// check every 1.5 seconds 
@@ -489,12 +501,12 @@ int ricevi(char* buf, size_t buf_len, int mitt, int* connect, channel_struct* my
 		
 		if (ret == 0) continue; // timeout expired
 		
-		int ret;
 		if ((ret=leggiMSG())==1) { 
+		
 			*connect=0;
 			my_channel=NULL;
-			printf("asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
-			
+			printf("22222222 asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
+			invio("sei stato disconnesso\0",key);	
 		}
 		
 		
@@ -516,15 +528,20 @@ int ricevi(char* buf, size_t buf_len, int mitt, int* connect, channel_struct* my
 
 int leggiMSG(){
 		if ( msgrcv(id_coda, &recv_message, sizeof(mymsg), 1, IPC_NOWAIT)  != -1 ) { 
+			printf("messaggio ricevuto\n");
 			return 1;  //messaggio ricevuto
 			
 		}
 		else if(errno!=ENOMSG){  //ENOMSG: IPC_NOWAIT asserted, and no message exists in the queue to satisfy the request
+			printf("errore lettura messaggio\n");
 			printf("ERROR, please check with the problem\n");
 			ERROR_HELPER(-1,"errore lettura messaggio"); 
 			return -1;  //errore!!
 		}
-		else return 0;  //nessun messaggio ricevuto
+		else {
+			printf("nessun messaggio\n");
+			return 0;  //nessun messaggio ricevuto
+		}
 
 }
 
