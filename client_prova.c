@@ -50,7 +50,7 @@ void* ricevi(void* arg){
 			if (errno == EINTR) continue;
 			ERROR_HELPER(-1, "Cannot read from socket");
 		}
-		printf("ricevuto: %s\n",msg_recv);
+		if (recv_bytes>0)printf("ricevuto: %s\n",msg_recv);
 	}
     return NULL;
 	
