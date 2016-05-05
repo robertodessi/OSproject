@@ -350,20 +350,22 @@ channel_struct* my_channel;  //channel_list_struct* channel_list;
 				//ora attendo la conferma che tutti abbiano fatto la sem_close
 				//utilizzo il tipo 2 per i messaggi di sem_close
 				//aspetto la conferma da tutti (tranne se stesso)
-				/*
+				
 				for(i=0; i < my_channel->dim; i++){  
 					printf("\tscolto su %d\n",id_coda);
 					if(my_channel->client_desc[i] != args->socket_desc) {	
-						if ( msgrcv(id_coda, &recv_message, sizeof(mymsg), 2, FLAG)  != -1 ) { 
+						if ( msgrcv(id_coda, &recv_message, sizeof(mymsg), 2, FLAG)  ==-1) { 
+							
 							ERROR_HELPER(-1,"errore coda messaggi");
 						}
 						else{ 
-							if (DEBUG)printf("111111111 asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
+							if (DEBUG)printf("asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
 							printf("messaggio ricevuto");
 						}
+					
 					}
 				}
-				*/
+				
 				
 				
 				
@@ -550,8 +552,10 @@ void esci(mymsg recv_message, int* is_connect,sem_t* my_named_semaphore,channel_
 	//il canale sta per essere eliminato quindi esco
 	if (DEBUG)printf("asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
 	*is_connect=0;
-	sem_close(my_named_semaphore);	
-/*	
+	if(sem_close(my_named_semaphore)==-1){
+		ERROR_HELPER(-1,"errore sem_close");
+	}	
+	
 	//avverto il proprietario di aver fatto la sem_close!!
 	mymsg msg;
 	msg.mtype=2;  //header del messaggio. 1:delete  2:sem_close
@@ -567,7 +571,7 @@ void esci(mymsg recv_message, int* is_connect,sem_t* my_named_semaphore,channel_
 		ERROR_HELPER(-1,"errore coda");
 	}
 	else if (DEBUG)printf("invio a %d of type %ld - receive %s\n", id_coda_other, msg.mtype, msg.mtext); 
-*/	
+
 	my_channel=NULL;		
 	invio("sei stato disconnesso dal canale\0",key);	//avverto il client che è stato disconnesso dal canale
 }
