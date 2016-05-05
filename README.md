@@ -8,7 +8,7 @@ Feel free to contact us for any further information at roberto.dessi11@gmail.com
 
 ##Instruction
 
-To compile and launch in Linux with GNOME:
+To compile and launch in Linux:
 
 1. Open terminal in the project directory 
 

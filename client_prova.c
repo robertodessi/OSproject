@@ -27,7 +27,10 @@ void* invia(void* arg){
 	while(1){
 		printf("send: ");
 		fgets(buf, 1024, stdin);  //fgets prende anche il carattere invio
-		while ( (ret = send(args->desc, buf, sizeof(char)*(strlen(buf)-1), 0)) < 0 ) {
+		size_t buf_len = strlen(buf);
+		--buf_len; // remove '\n' from the end of the message
+
+		while ( (ret = send(args->desc, buf,buf_len, 0)) < 0 ) {
 			if (errno == EINTR) continue;
 			ERROR_HELPER(-1, "Cannot write to the socket");
 		}
@@ -47,7 +50,7 @@ void* ricevi(void* arg){
 			if (errno == EINTR) continue;
 			ERROR_HELPER(-1, "Cannot read from socket");
 		}
-		printf("ricevuto: %s\n",msg_recv);
+		if (recv_bytes>0)printf("ricevuto: %s\n",msg_recv);
 	}
     return NULL;
 	
