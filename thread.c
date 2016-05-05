@@ -24,13 +24,13 @@ void* connection_handler(void* arg) {
     handler_args_t* args = (handler_args_t*) arg; 
     
     
-mymsg  recv_message; //messaggio ricevuto dalla coda dei messaggi
-int id_coda;  //id della coda di messaggi di questo thread
-int key;  //chiave per la coda (vedi: msgget)
-sem_t* my_named_semaphore;  //nome del semaforo del canale
+	mymsg  recv_message; //messaggio ricevuto dalla coda dei messaggi
+	int id_coda;  //id della coda di messaggi di questo thread
+	int key;  //chiave per la coda (vedi: msgget)
+	sem_t* my_named_semaphore;  //nome del semaforo del canale
 
-int is_connect; //flag che indica se il client è connesso ad un canale oppure no
-channel_struct* my_channel;  //channel_list_struct* channel_list;
+	int is_connect; //flag che indica se il client è connesso ad un canale oppure no
+	channel_struct* my_channel;  //channel_list_struct* channel_list;
 	
     my_named_semaphore=NULL;  //semaforo
 	char* name_channel=NULL; 		 //nome del canale
@@ -93,7 +93,7 @@ channel_struct* my_channel;  //channel_list_struct* channel_list;
 		if(DEBUG) printList(args->channel_list);
 			
         // read message from client
-        recv_bytes = ricevi(buf,buf_len,args->socket_desc,id_coda,&recv_message, &is_connect, my_named_semaphore, my_channel, key);
+        recv_bytes = ricevi(buf,buf_len,args->socket_desc,id_coda,&recv_message, &is_connect, my_named_semaphore, my_channel);
         //if(DEBUG) printf("buf ricevuto=%s|\n",buf);
         
         command=0;  //setto il flag a false
@@ -275,13 +275,16 @@ channel_struct* my_channel;  //channel_list_struct* channel_list;
 			ERROR_HELPER(ret, "error sem_wait");  
 			
 			 // controllare se nel frattempo il canale è stato chiuso
-			if (leggiMSG(id_coda,&recv_message,key)==0) { 
+			if (leggiMSG(id_coda,&recv_message)==0) { 
 			
 				
 				printf("nessun messaggio\n");
 			}
 			else{				
 				esci(recv_message, &is_connect,my_named_semaphore,my_channel,  key);
+				ret = sem_post(my_named_semaphore);
+				ERROR_HELPER(ret, "error sem_post");
+				/**FINE SEZIONE CRITICA PER IL CANALE**/
 				continue;
 			}       
 			
@@ -375,6 +378,10 @@ channel_struct* my_channel;  //channel_list_struct* channel_list;
 				ret = sem_wait(sem);
 				ERROR_HELPER(ret, "error sem_wait");
 				
+				/**TODO gestire i ritorni**/
+				sem_close(my_named_semaphore);
+				sem_unlink(name_channel);
+				
 				//aggiorno la lista dei canali
 				for(i=0;i<args->channel_list->num_channels;i++){
 					if(strcmp(args->channel_list->name_channel[i],my_channel->name_channel)==0){
@@ -403,9 +410,6 @@ channel_struct* my_channel;  //channel_list_struct* channel_list;
 				free(my_channel);
 				my_channel=NULL;
 				
-				/**TODO gestire i ritorni**/
-				sem_close(my_named_semaphore);
-				sem_unlink(name_channel);
 				
 				ret = sem_post(sem);
 				ERROR_HELPER(ret, "error sem_post");
@@ -439,7 +443,7 @@ channel_struct* my_channel;  //channel_list_struct* channel_list;
 			ret = sem_wait(my_named_semaphore); 
 			ERROR_HELPER(ret, "error sem_wait");  
 	
-			if ( leggiMSG(id_coda,&recv_message,key)==0){
+			if ( leggiMSG(id_coda,&recv_message)==0){
 				//inoltro del messaggio escuso se stesso
 				int i=0;
 				for(i=0; i < my_channel->dim; i++){  
@@ -478,7 +482,7 @@ void invio(char* s, int dest){
 	}
 }
 
-int ricevi(char* buf,size_t buf_len,int mitt,int id_coda,mymsg* recv_message,int* is_connect,sem_t* my_named_semaphore,channel_struct* my_channel,int key){
+int ricevi(char* buf,size_t buf_len,int mitt,int id_coda,mymsg* recv_message,int* is_connect,sem_t* my_named_semaphore,channel_struct* my_channel){
 	int ret,shouldStop=0;
 	int recv_bytes=0;
 	
@@ -500,15 +504,14 @@ int ricevi(char* buf,size_t buf_len,int mitt,int id_coda,mymsg* recv_message,int
 		
 		ret = select(nfds, &read_descriptors, NULL, NULL, &timeout);
 		
-		printf("sono %d\n",key);
 		
 		if (ret == -1 && errno == EINTR) continue;
 		ERROR_HELPER(ret, "Unable to select()");
 	
 		
 		//controllo periodicamente se è arrivato qualche messaggio
-		if (leggiMSG(id_coda,recv_message,key)) {  
-			esci(*recv_message, is_connect, my_named_semaphore, my_channel,  key);
+		if (leggiMSG(id_coda,recv_message)) {  
+			esci(*recv_message, is_connect, my_named_semaphore, my_channel,  mitt);
 		}
 		
 		if (ret == 0) continue; // timeout expired
@@ -531,11 +534,10 @@ int ricevi(char* buf,size_t buf_len,int mitt,int id_coda,mymsg* recv_message,int
 }
 
 
-int leggiMSG(int id_coda, mymsg* recv_message, int key){
+int leggiMSG(int id_coda, mymsg* recv_message){
 	//utilizzo il tipo 1 per i messaggi di delete
 	
 	if ( msgrcv(id_coda, recv_message, sizeof(mymsg), 1, IPC_NOWAIT)  != -1 ) { 
-		printf("%d messaggio ricevuto\n",key);
 		return 1;  //messaggio ricevuto			
 	}
 	else if(errno!=ENOMSG){  //ENOMSG: IPC_NOWAIT asserted, and no message exists in the queue to satisfy the request
@@ -543,12 +545,11 @@ int leggiMSG(int id_coda, mymsg* recv_message, int key){
 		return -1;  //errore!!
 	}
 	else {
-		printf("nessun messaggio %d coda %d\n",key,id_coda);
 		return 0;  //nessun messaggio ricevuto
 	}
 }
 
-void esci(mymsg recv_message, int* is_connect,sem_t* my_named_semaphore,channel_struct* my_channel, int key){
+void esci(mymsg recv_message, int* is_connect,sem_t* my_named_semaphore,channel_struct* my_channel,int client_desc){
 	//il canale sta per essere eliminato quindi esco
 	if (DEBUG)printf("asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext); 
 	*is_connect=0;
@@ -573,7 +574,7 @@ void esci(mymsg recv_message, int* is_connect,sem_t* my_named_semaphore,channel_
 	else if (DEBUG)printf("invio a %d of type %ld - receive %s\n", id_coda_other, msg.mtype, msg.mtext); 
 
 	my_channel=NULL;		
-	invio("sei stato disconnesso dal canale\0",key);	//avverto il client che è stato disconnesso dal canale
+	invio("sei stato disconnesso dal canale\0",client_desc);	//avverto il client che è stato disconnesso dal canale
 }
 
 /**TODO: togliere gli spazi alla fine del nome **/
