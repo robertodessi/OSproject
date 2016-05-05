@@ -57,12 +57,12 @@ void printList(channel_list_struct* list);
 void invio(char* s, int dest);
 
 //riceve da @dest (descrittore del client) e salva in @buf il messaggio - @buf_len indica la lunghezza del buffer
-int ricevi(char* buf, size_t buf_len, int mitt);
+int ricevi(char* buf,size_t buf_len,int mitt,int id_coda,mymsg* recv_message,int* is_connect,sem_t* my_named_semaphore,channel_struct* my_channel,int key);
 
 //legge il messaggio di tipo 1 in maniera NON bloccante. Ritorna 1 se c'è un messaggio, 0 se non c'è nessun messaggio ,-1 in caso di errore.
-int leggiMSG();
+int leggiMSG(int id_coda, mymsg* recv_message, int key);
 
 //quando un canale sta per essere chiuso, questa funzione farà tutto il necessario per disconnettersi in maniera "pulita"
-void esci();
+void esci(mymsg recv_message, int* is_connect,sem_t* my_named_semaphore,channel_struct* my_channel, int key);
 
 #endif 
