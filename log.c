@@ -57,7 +57,7 @@ void logConnection(char ip[], uint16_t port) {
 
     char* date = ctime(&mytime);
 
-    ret = fprintf(file, "%sIncominc connection accepted from IP: %s | PORT: %d\n\n\n", date, ip, client_port);
+    ret = fprintf(file, "%sIncoming connection accepted from IP: %s | PORT: %d\n\n\n", date, ip, client_port);
     ERROR_HELPER(ret, "Errore scrittura operazione server su file");
 
     ret = fclose(file);
