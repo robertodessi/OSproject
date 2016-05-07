@@ -24,6 +24,7 @@
 #define DEBUG           1   // display debug messages
 #define MAX_CONN_QUEUE  3   // max number of connections the server can queue
 #define SERVER_ADDRESS  "127.0.0.1"
+#define SHOW_COMMAND    "/show"
 #define CREATE_COMMAND  "/create"
 #define JOIN_COMMAND    "/join"
 #define QUIT_COMMAND    "/quit"

@@ -18,7 +18,7 @@ int main(){
 #ifdef __linux__
             ret=system("xterm -hold ./client_prova");
 #endif
-#ifdef  __APPLE__ && __MACH__
+#ifdef  __APPLE__
             ret = system("open -a Terminal.app ./client_prova");
 #endif
 
