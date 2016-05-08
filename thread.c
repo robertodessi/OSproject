@@ -1,5 +1,6 @@
 #include "thread.h"
 #include "common.h"
+#include "thread_util.h"
 
 #include <netinet/in.h>
 #include <netdb.h>
@@ -141,7 +142,7 @@ void* connection_handler(void* arg) {
             if (nameIsPresent) {
                 invio("il nome del canale esiste già, scegline un altro\0", args->socket_desc);
                 ret = sem_post(sem);
-                ERROR_HELPER(ret, "error sem_post");
+                ERROR_HELPER(ret, "error sem_post1");
                 //FINE SEZIONE CRITICA//				
                 continue; //non creo il cananale, quindi skippo il resto
             }
@@ -188,7 +189,7 @@ void* connection_handler(void* arg) {
             }
 
             ret = sem_post(sem);
-            ERROR_HELPER(ret, "error sem_post");
+            ERROR_HELPER(ret, "error sem_post2");
             /**FINE SEZIONE CRITICA PER LA LISTA**/
 
             if (DEBUG) printChannel(my_channel);
@@ -247,7 +248,7 @@ void* connection_handler(void* arg) {
 
 
                 ret = sem_post(my_named_semaphore);
-                ERROR_HELPER(ret, "error sem_post");
+                ERROR_HELPER(ret, "error sem_post3");
                 /**FINE SEZIONE CRITICA PER IL CANALE**/
 
                 // Warning: molto brutto da vedere e sicuramente c'è un modo migliore 
@@ -267,7 +268,7 @@ void* connection_handler(void* arg) {
             }
 
             ret = sem_post(sem);
-            ERROR_HELPER(ret, "error sem_post");
+            ERROR_HELPER(ret, "error sem_post4");
             /**FINE SEZIONE CRITICA PER LA LISTA**/
 
         }
@@ -293,7 +294,7 @@ void* connection_handler(void* arg) {
             } else {
                 esci(recv_message, &is_connect, my_named_semaphore, my_channel, key);
                 ret = sem_post(my_named_semaphore);
-                ERROR_HELPER(ret, "error sem_post");
+                ERROR_HELPER(ret, "error sem_post5");
                 /**FINE SEZIONE CRITICA PER IL CANALE**/
                 continue;
             }
@@ -319,7 +320,7 @@ void* connection_handler(void* arg) {
                 invio("Sei il proprietario non puoi abbandonare il gruppo!\nUsa il comando /delete per cancellare il gruppo ed uscire\0", args->socket_desc);
             }
             ret = sem_post(my_named_semaphore);
-            ERROR_HELPER(ret, "error sem_post");
+            ERROR_HELPER(ret, "error sem_post6");
             /**FINE SEZIONE CRITICA PER IL CANALE**/
 
 
@@ -423,22 +424,21 @@ void* connection_handler(void* arg) {
 
 
                 ret = sem_post(sem);
-                ERROR_HELPER(ret, "error sem_post");
+                ERROR_HELPER(ret, "error sem_post7");
                 /**FINE SEZIONE CRITICA PER LA LISTA**/
 
                 invio("canale eliminato\0", args->socket_desc);
                 is_connect = 0;
 
 
-            } else invio("solo il proprietario può eliminare il canale\0", args->socket_desc);
+            } else {
+                invio("solo il proprietario può eliminare il canale\0", args->socket_desc);
 
-            ret = sem_post(my_named_semaphore);
-            ERROR_HELPER(ret, "error sem_post");
-            /**FINE SEZIONE CRITICA PER IL CANALE**/
-
-
+                ret = sem_post(my_named_semaphore);
+                ERROR_HELPER(ret, "error sem_post8");
+                /**FINE SEZIONE CRITICA PER IL CANALE**/
+            }
         }
-
 
         // ****************************   SHOW   ********************************************
         if(!is_connect && !command && !memcmp(buf, show_command, show_command_len)){
@@ -454,6 +454,7 @@ void* connection_handler(void* arg) {
             if(length == 0){
                 invio("Non sono ancora stai creati canali. Perche' non crei il primo? :D\n\0", args->socket_desc);
                 ret = sem_post(sem);
+                // end of critical section
                 ERROR_HELPER(ret, "error sem_wait");
                 continue;
             }
@@ -463,7 +464,6 @@ void* connection_handler(void* arg) {
             strncpy(names_to_send, args->channel_list->name_channel[0], sizeof(args->channel_list->name_channel[0]));
             strncat(names_to_send, "\n", 2);
             
-            invio("I canali a cui poter fare accesso sono i seguenti:\n\0", args->socket_desc);
             for (i = 1; i < length; i++){
                 
                 strncat(names_to_send, args->channel_list->name_channel[i], sizeof(args->channel_list->name_channel[i]));
@@ -471,9 +471,11 @@ void* connection_handler(void* arg) {
              
             }
             ret = sem_post(sem);
+            // end of critical section
             ERROR_HELPER(ret, "error sem_wait");
             
             strncat(names_to_send, "\n", 2);
+            invio("I canali a cui poter fare accesso sono i seguenti:\n\0", args->socket_desc);
             invio(names_to_send, args->socket_desc);
         }
 
@@ -498,7 +500,7 @@ void* connection_handler(void* arg) {
             }
 
             ret = sem_post(my_named_semaphore);
-            ERROR_HELPER(ret, "error sem_post");
+            ERROR_HELPER(ret, "error sem_post9");
             /**FINE SEZIONE CRITICA PER IL CANALE**/
 
         }
@@ -515,138 +517,3 @@ void* connection_handler(void* arg) {
 
     pthread_exit(NULL);
 }
-
-void invio(char* s, int dest) {
-    int ret;
-    while ((ret = send(dest, s, sizeof (char)*strlen(s) + 1, 0)) < 0) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to the socket");
-    }
-}
-
-int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message, int* is_connect, sem_t* my_named_semaphore, channel_struct* my_channel) {
-    int ret, shouldStop = 0;
-    int recv_bytes = 0;
-
-    struct timeval timeout;
-    fd_set read_descriptors;
-    int nfds = mitt + 1;
-
-
-
-    while (!shouldStop) {
-        // check every 1.5 seconds 
-
-        timeout.tv_sec = 1;
-        timeout.tv_usec = 500000;
-
-        FD_ZERO(&read_descriptors);
-        FD_SET(mitt, &read_descriptors);
-
-
-        ret = select(nfds, &read_descriptors, NULL, NULL, &timeout);
-
-
-        if (ret == -1 && errno == EINTR) continue;
-        ERROR_HELPER(ret, "Unable to select()");
-
-
-        //controllo periodicamente se è arrivato qualche messaggio
-        if (leggiMSG(id_coda, recv_message)) {
-            esci(*recv_message, is_connect, my_named_semaphore, my_channel, mitt);
-        }
-
-        if (ret == 0) continue; // timeout expired
-
-        printf("è arrivato qualcosa\n");
-
-        // ret is 1: read available data!
-        while ((recv_bytes = recv(mitt, buf, buf_len, 0)) < 0) {
-            if (errno == EINTR) continue;
-            ERROR_HELPER(-1, "Cannot read from socket");
-        }
-        int end = recv_bytes / sizeof (char);
-        if (end < buf_len) buf[end] = '\0';
-        else buf[buf_len] = '\0'; //aggiungo il terminatore di stringa manualmente
-        shouldStop = 1;
-
-    }
-
-    return recv_bytes;
-}
-
-int leggiMSG(int id_coda, mymsg* recv_message) {
-    //utilizzo il tipo 1 per i messaggi di delete
-
-    if (msgrcv(id_coda, recv_message, sizeof (mymsg), 1, IPC_NOWAIT) != -1) {
-        return 1; //messaggio ricevuto			
-    } else if (errno != ENOMSG) { //ENOMSG: IPC_NOWAIT asserted, and no message exists in the queue to satisfy the request
-        ERROR_HELPER(-1, "errore lettura messaggio");
-        return -1; //errore!!
-    } else {
-        return 0; //nessun messaggio ricevuto
-    }
-}
-
-void esci(mymsg recv_message, int* is_connect, sem_t* my_named_semaphore, channel_struct* my_channel, int client_desc) {
-    //il canale sta per essere eliminato quindi esco
-    if (DEBUG)printf("asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext);
-    *is_connect = 0;
-    if (sem_close(my_named_semaphore) == -1) {
-        ERROR_HELPER(-1, "errore sem_close");
-    }
-
-    //avverto il proprietario di aver fatto la sem_close!!
-    mymsg msg;
-    msg.mtype = 2; //header del messaggio. 1:delete  2:sem_close
-    strcpy(msg.mtext, "semclose\0");
-
-    int id_coda_other = msgget(my_channel->client_desc[0], IPC_EXCL | 0666); //prendo la coda di messaggi del proprietario...
-    if (id_coda_other == -1) {
-        printf("cannot open server queue, please check with the problem\n");
-        ERROR_HELPER(-1, "errore coda");
-    }
-    if (msgsnd(id_coda_other, &msg, SIZE, FLAG) == -1) { //...gli invio il messaggio
-        printf("cannot return response to the client\n");
-        ERROR_HELPER(-1, "errore coda");
-    } else if (DEBUG)printf("invio a %d of type %ld - receive %s\n", id_coda_other, msg.mtype, msg.mtext);
-
-    my_channel = NULL;
-    invio("sei stato disconnesso dal canale\0", client_desc); //avverto il client che è stato disconnesso dal canale
-}
-
-/**TODO: togliere gli spazi alla fine del nome **/
-char* prendiNome(char* str, int len, size_t command_len) {
-    char* res = (char*) malloc(sizeof (char) * (len - command_len));
-    /* Warning: 
-     * in questo momento il comando funziona anche senza spazio tra il comando e il nome (es:  /create<nome_canale>) 
-     * funziona anche se ci sono più spazi */
-    int index = command_len;
-    int i = 0;
-    while (str[index] == ' ') index++; //tolgo gli eventuali spazi tra il comando e il nome del canale  
-    for (; i < len; i++) res[i] = str[index++];
-    res[++i] = '\0';
-    return res;
-}
-
-void printList(channel_list_struct* list) {
-    int i;
-    for (i = 0; i < list->num_channels; i++) {
-        printChannel(list->channel[i]);
-        printf("\n");
-    }
-
-}
-
-void printChannel(channel_struct* channel) {
-    printf("\nCHANNEL\n");
-    printf("name: %s\n", channel->name_channel);
-    printf("id: %d\n", channel->id);
-    printf("owner: %d\n", channel->owner);
-    printf("dimension: %d\n", channel->dim);
-    printf("client_desc: ");
-    for (int i = 0; i < channel->dim; i++)printf("%d, ", channel->client_desc[i]);
-    printf("\n\n");
-}
-
-

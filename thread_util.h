@@ -139,7 +139,6 @@ void printList(channel_list_struct* list) {
         printChannel(list->channel[i]);
         printf("\n");
     }
-
 }
 
 void printChannel(channel_struct* channel) {
