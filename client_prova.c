@@ -25,10 +25,10 @@ void* invia(void* arg) {
     int ret;
     char buf[1024];
 
-    int sum = 0;
+    unsigned int sum = 0;
     while (1) {
-        printf("send: ");
-        fgets(buf, 1024, stdin); //fgets prende anche il carattere invio
+        //printf("send: ");
+        fgets(buf, 1000, stdin); //fgets prende anche il carattere invio
         size_t buf_len = strlen(buf);
         --buf_len; // remove '\n' from the end of the message
 
@@ -46,7 +46,7 @@ void* invia(void* arg) {
 void* ricevi(void* arg) {
     struct_arg_client* args = (struct_arg_client*) arg;
 
-    int sum = 0;
+    unsigned int sum = 0;
     char msg_recv[1024];
     size_t msg_recv_len = sizeof (msg_recv);
     while (1) {
@@ -142,14 +142,14 @@ int main(int argc, char* argv[]) {
     
     pthread_join(thread_rcv, &res2);
 
-    printf("Joined thread1 computing send work and thread2 computing rcv work.\nTotal bytes sent: %d bytes\n Total bytes received: %d bytes\n", (int) res1, (int) res2);
+    printf("Joined thread1 computing send work and thread2 computing rcv work.\nTotal bytes sent: %d bytes\nTotal bytes received: %d bytes\n", (unsigned int) res1, (unsigned int) res2);
 
     // close the socket
     ret = close(socket_desc);
     ERROR_HELPER(ret, "Cannot close socket");
 
-    free(res1);
-    free(res2);
+    //free(res1);
+    //free(res2);
     if (DEBUG) fprintf(stderr, "Exiting...\n");
 
     exit(EXIT_SUCCESS);

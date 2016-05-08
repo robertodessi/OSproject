@@ -452,7 +452,7 @@ void* connection_handler(void* arg) {
             int length = args->channel_list->num_channels;
             
             if(length == 0){
-                invio("Non sono ancora stai creati canali. Perche' non crei il primo? :D\n\0", args->socket_desc);
+                invio("Non sono ancora stai creati canali. Perche' non crei il primo? :D\0", args->socket_desc);
                 ret = sem_post(sem);
                 // end of critical section
                 ERROR_HELPER(ret, "error sem_wait");
@@ -460,8 +460,8 @@ void* connection_handler(void* arg) {
             }
             
             char names_to_send[22 * length];
-            
             strncpy(names_to_send, args->channel_list->name_channel[0], sizeof(args->channel_list->name_channel[0]));
+            
             strncat(names_to_send, "\n", 2);
             
             for (i = 1; i < length; i++){
@@ -474,7 +474,7 @@ void* connection_handler(void* arg) {
             // end of critical section
             ERROR_HELPER(ret, "error sem_wait");
             
-            strncat(names_to_send, "\n", 2);
+            strncat(names_to_send, "\0", 2);
             invio("I canali a cui poter fare accesso sono i seguenti:\n\0", args->socket_desc);
             invio(names_to_send, args->socket_desc);
         }
