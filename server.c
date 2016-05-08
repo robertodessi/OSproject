@@ -130,7 +130,10 @@ int main(int argc, char *argv[]) {
         // accept incoming connection
         client_desc = accept(socket_desc, (struct sockaddr*) client_addr, (socklen_t*) &sockaddr_len);
         if (client_desc == -1 && errno == EINTR) continue; // check for interruption by signals
-        ERROR_HELPER(client_desc, "Cannot open socket for incoming connection");
+        if(client_desc == -1){
+			printf("Cannot open socket for incoming connection\n");
+			continue;
+		}
         
         // parse client IP address and port
 		char client_ip[INET_ADDRSTRLEN];

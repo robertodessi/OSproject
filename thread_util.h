@@ -119,6 +119,7 @@ void esci(mymsg recv_message, int* is_connect, sem_t* my_named_semaphore, channe
     invio("sei stato disconnesso dal canale\0", client_desc); //avverto il client che è stato disconnesso dal canale
 }
 
+
 /**TODO: togliere gli spazi alla fine del nome **/
 char* prendiNome(char* str, int len, size_t command_len) {
     char* res = (char*) malloc(sizeof (char) * (len - command_len));
