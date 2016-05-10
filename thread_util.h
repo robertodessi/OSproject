@@ -29,7 +29,7 @@ void printChannel(channel_struct* channel);
 void printList(channel_list_struct* list);
 
 //invia a @dest (descrittore del client) la stringa @s
-void invio(char* s, int dest);
+int invio(char* s, int dest);
 
 //riceve da @dest (descrittore del client) e salva in @buf il messaggio - @buf_len indica la lunghezza del buffer
 int ricevi(char* buf,size_t buf_len,int mitt,int id_coda,mymsg* recv_message,int* is_connect,sem_t* my_named_semaphore,channel_struct* my_channel);
@@ -43,11 +43,11 @@ void esci(mymsg recv_message, int* is_connect,sem_t* my_named_semaphore,channel_
 
 
 
-void invio(char* s, int dest) {
+int invio(char* s, int dest) {
     int ret;
     while ((ret = send(dest, s, sizeof (char)*strlen(s) + 1, 0)) < 0) {
         if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to the socket");
+        return -1;
     }
 }
 
@@ -75,7 +75,7 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
 
 
         if (ret == -1 && errno == EINTR) continue;
-        ERROR_HELPER(ret, "Unable to select()");
+        return -1;
 
 
         //controllo periodicamente se è arrivato qualche messaggio
@@ -90,7 +90,7 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
         // ret is 1: read available data!
         while ((recv_bytes = recv(mitt, buf, buf_len, 0)) < 0) {
             if (errno == EINTR) continue;
-            ERROR_HELPER(-1, "Cannot read from socket");
+            return -1;
         }
         int end = recv_bytes / sizeof (char);
         if (end < buf_len) buf[end] = '\0';
@@ -108,7 +108,7 @@ int leggiMSG(int id_coda, mymsg* recv_message) {
     if (msgrcv(id_coda, recv_message, sizeof (mymsg), 1, IPC_NOWAIT) != -1) {
         return 1; //messaggio ricevuto			
     } else if (errno != ENOMSG) { //ENOMSG: IPC_NOWAIT asserted, and no message exists in the queue to satisfy the request
-        ERROR_HELPER(-1, "errore lettura messaggio");
+        return -1;
         return -1; //errore!!
     } else {
         return 0; //nessun messaggio ricevuto
@@ -120,7 +120,7 @@ void esci(mymsg recv_message, int* is_connect, sem_t* my_named_semaphore, channe
     if (DEBUG)printf("asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext);
     *is_connect = 0;
     if (sem_close(my_named_semaphore) == -1) {
-        ERROR_HELPER(-1, "errore sem_close");
+        return -1;
     }
 
     //avverto il proprietario di aver fatto la sem_close!!
@@ -131,11 +131,11 @@ void esci(mymsg recv_message, int* is_connect, sem_t* my_named_semaphore, channe
     int id_coda_other = msgget(my_channel->client_desc[0], IPC_EXCL | 0666); //prendo la coda di messaggi del proprietario...
     if (id_coda_other == -1) {
         printf("cannot open server queue, please check with the problem\n");
-        ERROR_HELPER(-1, "errore coda");
+        return -1;
     }
     if (msgsnd(id_coda_other, &msg, SIZE, FLAG) == -1) { //...gli invio il messaggio
         printf("cannot return response to the client\n");
-        ERROR_HELPER(-1, "errore coda");
+        return -1;
     } else if (DEBUG)printf("invio a %d of type %ld - receive %s\n", id_coda_other, msg.mtype, msg.mtext);
 
     my_channel = NULL;
