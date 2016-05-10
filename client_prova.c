@@ -28,7 +28,7 @@ void* invia(void* arg) {
     unsigned int sum = 0;
     while (1) {
         //printf("send: ");
-        fgets(buf, 1000, stdin); //fgets prende anche il carattere invio
+        fgets(buf, 1024, stdin); //fgets prende anche il carattere invio
         size_t buf_len = strlen(buf);
         --buf_len; // remove '\n' from the end of the message
 
