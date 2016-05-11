@@ -34,7 +34,7 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
 
 
         if (ret == -1 && errno == EINTR) continue;
-        return -1;
+        if(ret==-1) return -1;
 
 
         //controllo periodicamente se è arrivato qualche messaggio
