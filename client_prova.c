@@ -30,8 +30,9 @@ void* invia(void* arg) {
         //printf("send: ");
         fgets(buf, 1024, stdin); //fgets prende anche il carattere invio
         size_t buf_len = strlen(buf);
-        --buf_len; // remove '\n' from the end of the message
-
+        
+        buf[buf_len-1]='\0';
+        //--buf_len; // remove '\n' from the end of the message
         while ((ret = send(args->desc, buf, buf_len, 0)) < 0) {
             if (errno == EINTR) continue;
             ERROR_HELPER(-1, "Cannot write to the socket");

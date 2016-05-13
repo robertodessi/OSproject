@@ -3,9 +3,14 @@
 
 int invio(char* s, int dest) {
     int ret;
-    while ((ret = send(dest, s, sizeof (char)*strlen(s) + 1, 0)) < 0) {
-        if (errno == EINTR) continue;
-        return -1;
+    int left_bytes = sizeof (char)*(strlen(s) + 1);
+    int sent_bytes =0 ;
+    while (left_bytes > 0){
+		ret = send(dest, s+sent_bytes, left_bytes, 0);
+		if (ret<0 && errno == EINTR) continue;
+		if(ret<0) return -1;  //error: return -1;
+		sent_bytes+=ret;
+		left_bytes-=ret;        
     }
     return 0;
 }
@@ -47,13 +52,18 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
         printf("è arrivato qualcosa\n");
 
         // ret is 1: read available data!
-        while ((recv_bytes = recv(mitt, buf, buf_len, 0)) < 0) {
-            if (errno == EINTR) continue;
-            return -1;
+        int flag=1;
+		while (flag){
+			ret = recv(mitt, buf+recv_bytes, buf_len-recv_bytes, 0);
+            if (ret<0 && errno == EINTR) continue;
+            if (ret<0) return -1;  //error: return -1
+            recv_bytes+=ret;
+            if(recv_bytes>0 && buf[recv_bytes-1]=='\0'){
+				 flag=0;
+			 }
+            if(recv_bytes==0)break; 
         }
-        int end = recv_bytes / sizeof (char);
-        if (end < buf_len) buf[end] = '\0';
-        else buf[buf_len] = '\0'; //aggiungo il terminatore di stringa manualmente
+        recv_bytes--;
         shouldStop = 1;
 
     }
