@@ -17,8 +17,6 @@
 //  socekt descriptor
 int socket_desc, client_desc;
 
-//  struct containing server info
-struct sockaddr_in server_addr;
 
 void error_handling(int signal, void (*handler)(int)) {
     struct sigaction act;
@@ -32,9 +30,10 @@ void safe_exit() {
     fflush(stdout);
     close(socket_desc);
     // FARE LE FREE
-    free(server_addr);
+    //free(server_addr);
+    sem_close(sem);
+    free(sem); 
     sem_unlink(NAME_SEM);
-    free(sem);  
 
     exit(0);
 }
@@ -73,7 +72,8 @@ int main(int argc, char *argv[]) {
 
     //  some fields are required to be filled with 0
     //  struct sockaddr_in server_addr = {0};
-    server_addr = {0};
+    //  struct containing server info
+    struct sockaddr_in server_addr = {0};
     
     int sockaddr_len = sizeof (struct sockaddr_in); // we will reuse it for accept()
 
@@ -85,13 +85,12 @@ int main(int argc, char *argv[]) {
 
     //  alloco e inizializzo il semaforo
     sem = (sem_t*) malloc(sizeof (sem_t));
-    //ret=sem_open(sem, 0, 1);
 
     sem = sem_open(NAME_SEM, O_CREAT | O_EXCL, 0666, 1);
     if (sem == SEM_FAILED && errno == EEXIST) {
-        printf("already exists, let's unlink it...\n");
+        logMsg("Global sem already exists, let's unlink it...");
         sem_unlink(NAME_SEM);
-        printf("and then reopen it...\n");
+        logMsg("and then reopen it!");
         sem = sem_open(NAME_SEM, O_CREAT | O_EXCL, 0666, 1);
     }
     if (sem == SEM_FAILED) {
@@ -122,7 +121,7 @@ int main(int argc, char *argv[]) {
     ret = pthread_sigmask(SIG_BLOCK, &mask, NULL);
     ERROR_HELPER(ret, "Errore nella pthread_sigmask\n\n");
 
-//    signal(SIGCHLD, SIG_IGN);
+    //  signal(SIGCHLD, SIG_IGN);
     signal(SIGPIPE, SIG_IGN);
 
     error_handling(SIGTERM, safe_exit);
@@ -135,7 +134,7 @@ int main(int argc, char *argv[]) {
     //Presentation
     printf("\n\n|==============================Welcome by ChatApp!==============================|\n");
 
-    if (DEBUG)resetLog(); //resetto il file di log
+    if (DEBUG) resetLog(); //resetto il file di log
     logMsg("Server started to run");
 
     // initialize socket for listening
