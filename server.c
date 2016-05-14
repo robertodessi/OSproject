@@ -17,28 +17,49 @@
 //  socekt descriptor
 int socket_desc, client_desc;
 
+char* err_name;
 
-void error_handling(int signal, void (*handler)(int)) {
+void error_handling(int signal, void (*handler)(int), int err) {
     struct sigaction act;
     act.sa_handler = handler;
+    
+    switch(err) {
+        case 1:
+            err_name = "SIGTERM";
+            break;
+        case 2:
+            err_name = "SIGINT";
+            break;
+        case 3:
+            err_name = "SIGQUIT";
+            break;
+        case 4:
+            err_name = "SIGHUP";
+            break;            
+        case 5:
+            err_name = "SIGILL";
+            break;
+        default:
+            err_name = "Signal unknown";
+            break;
+    }
     sigaction(signal, &act, NULL);
 }
 
 void safe_exit() {
-    logMsg("\nServer shutting down, signal caught");
-    printf("\nServer shutting down\n");
+    
+    logMsg("\nServer shutting down, signal caught is: ");
+    logMsg(err_name);
     fflush(stdout);
     close(socket_desc);
     // FARE LE FREE
     //free(server_addr);
     sem_close(sem);
-    free(sem); 
     sem_unlink(NAME_SEM);
 
     exit(0);
 }
 
-// TODO da usare
 
 void gestione_sigsegv(int dummy1, siginfo_t *info, void *dummy2) {
     unsigned int address;
@@ -50,7 +71,6 @@ void gestione_sigsegv(int dummy1, siginfo_t *info, void *dummy2) {
 
 sigset_t mask;
 
-// TODO da usare
 
 void sigsegv() {
     struct sigaction act;
@@ -71,10 +91,9 @@ int main(int argc, char *argv[]) {
     int ret;
 
     //  some fields are required to be filled with 0
-    //  struct sockaddr_in server_addr = {0};
     //  struct containing server info
-    struct sockaddr_in server_addr = {0};
-    
+      struct sockaddr_in server_addr = {0};
+   
     int sockaddr_len = sizeof (struct sockaddr_in); // we will reuse it for accept()
 
     //  struttura che rappresenta la lista di tutti i canali
@@ -124,11 +143,14 @@ int main(int argc, char *argv[]) {
     //  signal(SIGCHLD, SIG_IGN);
     signal(SIGPIPE, SIG_IGN);
 
-    error_handling(SIGTERM, safe_exit);
-    error_handling(SIGINT, safe_exit);
-    error_handling(SIGQUIT, safe_exit);
-    error_handling(SIGHUP, safe_exit);
-    error_handling(SIGILL, safe_exit);
+    error_handling(SIGTERM, safe_exit, 1);
+    error_handling(SIGINT, safe_exit, 2);
+    error_handling(SIGQUIT, safe_exit, 3);
+    error_handling(SIGHUP, safe_exit, 4);
+    error_handling(SIGILL, safe_exit, 5);
+    //error_handling(SIGSEGV, gestione_);
+    
+
     
     
     //Presentation
@@ -183,7 +205,7 @@ int main(int argc, char *argv[]) {
 
         logConnection(client_ip, client_port);
 
-        //creo il thread che gestirà il client da ora in avanti
+        //  creo il thread che gestirà il client da ora in avanti
         pthread_t thread;
 
         // put arguments for the new thread into a buffer
