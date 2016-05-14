@@ -15,4 +15,7 @@ void resetLog();
 //log per le connessioni @param ip, port
 void logConnection(char ip[], uint16_t port);
 
+//log per le connessioni @param err, err number
+void logError(char* toWrite, int err);
+
 #endif

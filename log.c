@@ -40,6 +40,31 @@ void logMsg(char* toWrite) {
 
 }
 
+void logError(char* toWrite, int err){
+    
+    int ret;
+
+    file = fopen(NOME_FILE, "a");
+    if (file == NULL)ret = -1;
+    else ret = 0;
+    // ret = (file == null) ? -1 : 0;
+    ERROR_HELPER(ret, "Errore apertura file log.txt");
+
+    //	getting current time and date
+    time_t mytime;
+    mytime = time(NULL);
+
+    char* date = ctime(&mytime);
+
+    ret = fprintf(file, "%s%s | Error number: %d\n\n\n", date, toWrite, err);
+    ERROR_HELPER(ret, "Errore scrittura operazione server su file");
+
+    ret = fclose(file);
+    ERROR_HELPER(ret, "Errore chiusura file");
+    
+}
+
+
 void logConnection(char ip[], uint16_t port) {
     int ret;
     
