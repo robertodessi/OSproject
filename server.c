@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
     printf("\n\n|==============================Welcome by ChatApp!==============================|\n");
 
     if (DEBUG) resetLog(); //resetto il file di log
-    logMsg("Server started to run");
+    logMsg("|===================================Server started to run===================================|");
 
     // initialize socket for listening
     socket_desc = socket(AF_INET, SOCK_STREAM, 0);
