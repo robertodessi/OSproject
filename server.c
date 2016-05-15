@@ -14,38 +14,63 @@
 #include <signal.h> //signals handling
 
 
-//	socekt descriptor
+//  socekt descriptor
 int socket_desc, client_desc;
 
-void error_handling(int signal, void (*handler)(int)) {
+char* err_name;
+
+void error_handling(int signal, void (*handler)(int), int err) {
     struct sigaction act;
     act.sa_handler = handler;
+    
+    switch(err) {
+        case 1:
+            err_name = "SIGTERM";
+            break;
+        case 2:
+            err_name = "SIGINT";
+            break;
+        case 3:
+            err_name = "SIGQUIT";
+            break;
+        case 4:
+            err_name = "SIGHUP";
+            break;            
+        case 5:
+            err_name = "SIGILL";
+            break;
+        default:
+            err_name = "Signal unknown";
+            break;
+    }
     sigaction(signal, &act, NULL);
 }
 
 void safe_exit() {
-    logMsg("\nServer shutting down, signal caught");
-    printf("Server shutting down\n");
+    
+    logMsg("\nServer shutting down, signal caught is: ");
+    logMsg(err_name);
     fflush(stdout);
     close(socket_desc);
-
-    // TODO FARE LE FREE
+    // FARE LE FREE
+    //free(server_addr);
+    sem_close(sem);
+    sem_unlink(NAME_SEM);
 
     exit(0);
 }
 
-// TODO da usare
 
 void gestione_sigsegv(int dummy1, siginfo_t *info, void *dummy2) {
     unsigned int address;
     address = (unsigned int) info->si_addr;
-    printf("segfault occurred (address is %x)\n", address);
+    if(DEBUG) printf("segfault occurred (address is %x)\n", address);
+    logSeg(address);
     fflush(stdout);
 }
 
 sigset_t mask;
 
-// TODO da usare
 
 void sigsegv() {
     struct sigaction act;
@@ -53,12 +78,6 @@ void sigsegv() {
     act.sa_mask = mask;
     act.sa_flags = SA_SIGINFO;
     sigaction(SIGSEGV, &act, NULL);
-}
-
-void brokenPipe() {
-    logMsg("BROKEN PIPE");
-    printf("BROKEN PIPE\n");
-    fflush(stdout);
 }
 
 
@@ -71,26 +90,26 @@ int main(int argc, char *argv[]) {
     //	error check descriptor 
     int ret;
 
-    // some fields are required to be filled with 0
-    struct sockaddr_in server_addr = {0};
-
+    //  some fields are required to be filled with 0
+    //  struct containing server info
+      struct sockaddr_in server_addr = {0};
+   
     int sockaddr_len = sizeof (struct sockaddr_in); // we will reuse it for accept()
 
-    //struttura che rappresenta la lista di tutti i canali
+    //  struttura che rappresenta la lista di tutti i canali
     channel_list_struct* channel_list = (channel_list_struct*) malloc(sizeof (channel_list_struct));
     channel_list->num_channels = 0; //inizialmente ci sono 0 canali
     channel_list->name_channel = (char**) malloc(0); //inizializzo le strutture dati
     channel_list->channel = (channel_struct**) malloc(0); //inizializzo le strutture dati
 
-    //alloco e inizializzo il semaforo
+    //  alloco e inizializzo il semaforo
     sem = (sem_t*) malloc(sizeof (sem_t));
-    //ret=sem_open(sem, 0, 1);
 
     sem = sem_open(NAME_SEM, O_CREAT | O_EXCL, 0666, 1);
     if (sem == SEM_FAILED && errno == EEXIST) {
-        printf("already exists, let's unlink it...\n");
+        logMsg("Global sem already exists, let's unlink it...");
         sem_unlink(NAME_SEM);
-        printf("and then reopen it...\n");
+        logMsg("and then reopen it!");
         sem = sem_open(NAME_SEM, O_CREAT | O_EXCL, 0666, 1);
     }
     if (sem == SEM_FAILED) {
@@ -118,30 +137,26 @@ int main(int argc, char *argv[]) {
     ret = sigdelset(&mask, SIGPIPE);
     ERROR_HELPER(ret, "Errore nella sigdelset(SIGPIPE)\n\n");
 
-    ret = sigdelset(&mask, SIGALRM);
-    ERROR_HELPER(ret, "Errore nella sigdelset(SIGALRM)\n\n");
-
     ret = pthread_sigmask(SIG_BLOCK, &mask, NULL);
     ERROR_HELPER(ret, "Errore nella pthread_sigmask\n\n");
 
-    signal(SIGCHLD, SIG_IGN);
+    //  signal(SIGCHLD, SIG_IGN);
     signal(SIGPIPE, SIG_IGN);
 
-    error_handling(SIGTERM, safe_exit);
-    error_handling(SIGINT, safe_exit);
-    error_handling(SIGQUIT, safe_exit);
-    error_handling(SIGHUP, safe_exit);
-    error_handling(SIGILL, safe_exit);
-    error_handling(SIGPIPE, brokenPipe);
+    error_handling(SIGTERM, safe_exit, 1);
+    error_handling(SIGINT, safe_exit, 2);
+    error_handling(SIGQUIT, safe_exit, 3);
+    error_handling(SIGHUP, safe_exit, 4);
+    error_handling(SIGILL, safe_exit, 5);
+    //error_handling(SIGSEGV, gestione_);
+    
 
-    //error_handling(SIGPIPE, brokenPipe);
-
-
-
+    
+    
     //Presentation
-    printf("Server: Welcome by ChatApp!\n");
+    printf("\n\n|==============================Welcome by ChatApp!==============================|\n");
 
-    resetLog(); //resetto il file di log
+    if (DEBUG) resetLog(); //resetto il file di log
     logMsg("Server started to run");
 
     // initialize socket for listening
@@ -177,7 +192,7 @@ int main(int argc, char *argv[]) {
         client_desc = accept(socket_desc, (struct sockaddr*) client_addr, (socklen_t*) & sockaddr_len);
         if (client_desc == -1 && errno == EINTR) continue; // check for interruption by signals
         if (client_desc == -1) {
-            printf("Cannot open socket for incoming connection\n");
+            logMsg("Cannot open socket for incoming connection, retrying...");
             continue;
         }
 
@@ -190,7 +205,7 @@ int main(int argc, char *argv[]) {
 
         logConnection(client_ip, client_port);
 
-        //creo il thread che gestirà il client da ora in avanti
+        //  creo il thread che gestirà il client da ora in avanti
         pthread_t thread;
 
         // put arguments for the new thread into a buffer
@@ -201,12 +216,15 @@ int main(int argc, char *argv[]) {
 
 
         if (pthread_create(&thread, NULL, connection_handler, (void*) thread_args) != 0) {
+            logError("Can't create a new thread", errno);
             fprintf(stderr, "Can't create a new thread, error %d\n", errno);
             exit(EXIT_FAILURE);
         }
 
         if (DEBUG) fprintf(stderr, "New thread created to handle the request!\n");
-
+        
+        logMsg("New thread created to handle the request!");
+        
         pthread_detach(thread); // I won't phtread_join() on this thread	
 
         // we can't just reset fields: we need a new buffer for client_addr!
@@ -215,22 +233,5 @@ int main(int argc, char *argv[]) {
     }
 
     exit(EXIT_SUCCESS); // this will never be executed
-
+    
 }
-
-//lo appunto qui perchè così me lo ricordo  http://www.dis.uniroma1.it/~aniello/sc/m2/es10/sol/chat_socket.c
-
-/* select() uses sets of descriptors and a timeval interval. The
- * methods returns when either an event occurs on a descriptor in
- * the sets during the given interval, or when that time elapses.
- *
- * The first argument for select is the maximum descriptor among
- * those in the sets plus one. Note also that both the sets and
- * the timeval argument are modified by the call, so you should
- * reinitialize them across multiple invocations.
- *
- * On success, select() returns the number of descriptors in the
- * given sets for which data may be available, or 0 if the timeout
- * expires before any event occurs. 
- */
-

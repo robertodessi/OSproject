@@ -12,8 +12,8 @@
 
 #define GENERIC_ERROR_HELPER(cond, errCode, msg)     do {           	\
         if (cond) {                                                 	\
-            fprintf(stderr, "%s: %s\n", msg, strerror(errCode));		\
-            logMsg(msg);												\
+            fprintf(stderr, "%s: %s\n", msg, strerror(errCode));	\
+            logMsg(msg);						\
             exit(EXIT_FAILURE);                                     	\
         }                                                           	\
     } while(0)
@@ -28,7 +28,7 @@
 #define CREATE_COMMAND  "/create"
 #define JOIN_COMMAND    "/join"
 #define QUIT_COMMAND    "/quit"
-#define DELETE_COMMAND    "/delete"
+#define DELETE_COMMAND  "/delete"
 #define SERVER_PORT     2016
 #define NAME_SEM "common_sem"
 
