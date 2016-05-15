@@ -6,12 +6,12 @@ int invio(char* s, int dest) {
     int left_bytes = sizeof (char)*(strlen(s) + 1);
     int sent_bytes = 0;
     while (left_bytes > 0) {
-        #ifdef __linux__
-            ret = send(dest, s + sent_bytes, left_bytes, MSG_CONFIRM);
-        #endif
-        #ifdef  __APPLE__
-            ret = send(dest, s + sent_bytes, left_bytes, 0);
-        #endif
+#ifdef __linux__
+        ret = send(dest, s + sent_bytes, left_bytes, MSG_CONFIRM);
+#endif
+#ifdef  __APPLE__
+        ret = send(dest, s + sent_bytes, left_bytes, 0);
+#endif
         if (ret < 0 && errno == EINTR) continue;
         if (ret < 0) return -1; //error: return -1;
         sent_bytes += ret;
