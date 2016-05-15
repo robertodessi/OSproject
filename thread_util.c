@@ -117,12 +117,9 @@ int esci(mymsg recv_message, int* is_connect, sem_t* my_named_semaphore, channel
     return 0;
 }
 
-/**TODO: togliere gli spazi alla fine del nome **/
+
 char* prendiNome(char* str, int len, size_t command_len) {
     char* res = (char*) malloc(sizeof (char) * (len - command_len));
-    /* Warning: 
-     * in questo momento il comando funziona anche senza spazio tra il comando e il nome (es:  /create<nome_canale>) 
-     * funziona anche se ci sono più spazi */
     int index = command_len;
     int i = 0;
     while (str[index] == ' ') index++; //tolgo gli eventuali spazi tra il comando e il nome del canale  
