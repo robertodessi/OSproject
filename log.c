@@ -139,6 +139,41 @@ void logRec(int recv_bytes, char* buf, char ip[],  int crash) {
     ERROR_HELPER(ret, "Errore chiusura file");
 }
 
+void logChannel(char* command, char* channel, char ip[]){
+    int ret;
+
+    //CREATE
+    char* create_command = CREATE_COMMAND;
+    size_t create_command_len = strlen(create_command);
+    
+    file = fopen(NOME_FILE, "a");
+    if (file == NULL)ret = -1;
+    else ret = 0;
+    // ret = (file == null) ? -1 : 0;
+    ERROR_HELPER(ret, "Errore apertura file log.txt");
+
+    //	getting current time and date
+    time_t mytime;
+    mytime = time(NULL);
+
+    char* date = ctime(&mytime);
+
+    if(!memcmp(command, create_command, create_command_len)){
+        ret = fprintf(file, "%sClient with IP %s just created a channel named: %s\n\n\n", date, ip, channel);
+        ERROR_HELPER(ret, "Errore scrittura operazione server su file");
+    }else {
+        ret = fprintf(file, "%sClient with IP %s just joined channel named: %s\n\n\n", date, ip, channel);
+        ERROR_HELPER(ret, "Errore scrittura operazione server su file");
+    }
+    ret = fclose(file);
+    ERROR_HELPER(ret, "Errore chiusura file");
+    
+}
+
+void logExit(int flags,char* name_channel, char ip[]){
+    //TODO
+}
+
 void resetLog() {
     int ret;
     //	cancella tutto il file di log

@@ -21,6 +21,8 @@ void logError(char* toWrite, int err);
 //log per segFault error @param add is the address where the error occurred
 void logSeg(unsigned int add);
 
+void logChannel(char* command, char* channel, char ip[]);
+
 /*log quando il server riceve un messaggio 
  *
  *  @param recv_bytes : bytes received from client 
@@ -29,5 +31,14 @@ void logSeg(unsigned int add);
  *  @param crash      : flag showing if client closed the conncection
  */ 
 void logRec(int recv_bytes, char* buf, char ip[], int crash);
+
+
+ /* log method for client actions, name channel is the name of the channel linked to the thread, ip is the client ip,
+  * and flag shows which of the following actions must be written to the log file:
+  * 0 quit
+  * 1 delete
+  * 2 fine vita del thread
+  */
+void logExit(int flags,char* name_channel, char ip[]);
 
 #endif
