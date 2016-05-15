@@ -21,4 +21,13 @@ void logError(char* toWrite, int err);
 //log per segFault error @param add is the address where the error occurred
 void logSeg(unsigned int add);
 
+/*log quando il server riceve un messaggio 
+ *
+ *  @param recv_bytes : bytes received from client 
+ *  @param buf        : buffer containing message
+ *  @param ip         : ip of the sender
+ *  @param crash      : flag showing if client closed the conncection
+ */ 
+void logRec(int recv_bytes, char* buf, char ip[], int crash);
+
 #endif
