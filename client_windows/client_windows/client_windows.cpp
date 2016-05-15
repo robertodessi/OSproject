@@ -24,13 +24,21 @@ int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort);
 
 void* Ricevi(int socket_desc){
 	unsigned int sum = 0;
+	int ret;
 	char msg_recv[1024];
 	size_t msg_recv_len = sizeof(msg_recv);
 	while (1) {
 		int recv_bytes = 0;
-		while ((recv_bytes = recv(socket_desc, msg_recv, msg_recv_len, 0)) < 0) {
-			if (errno == EINTR) continue;
-			exit(-1);
+		int flag = 1;
+		while (flag) {
+			ret = recv(socket_desc, msg_recv + recv_bytes, msg_recv_len - recv_bytes, 0);
+			if (ret<0 && errno == EINTR) continue;
+			if (ret<0) return (void*)sum;  //error: return -1
+			recv_bytes += ret;
+			if (recv_bytes>0 && msg_recv[recv_bytes - 1] == '\0') {
+				flag = 0;
+			}
+			if (recv_bytes == 0)break;
 		}
 		if (recv_bytes > 0)printf("ricevuto: %s\n", msg_recv);
 		sum += recv_bytes;
@@ -44,11 +52,13 @@ void* Invia(int socket_desc) {
 
 	unsigned int sum = 0;
 	while (1) {
-		printf("send: ");
+		//printf("send: ");
 		fgets(buf, 1024, stdin); //fgets prende anche il carattere invio
 		size_t buf_len = strlen(buf);
-		--buf_len; // remove '\n' from the end of the message
-
+		//printf("%d\n",buf_len);
+		if (buf_len == 1) continue;
+		buf[buf_len - 1] = '\0';
+		//--buf_len; // remove '\n' from the end of the message
 		while ((ret = send(socket_desc, buf, buf_len, 0)) < 0) {
 			if (errno == EINTR) continue;
 			exit(-1);
