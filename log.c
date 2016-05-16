@@ -170,8 +170,44 @@ void logChannel(char* command, char* channel, char ip[]){
     
 }
 
+ /* log method for client actions, name channel is the name of the channel linked to the thread, ip is the client ip,
+  * and flag shows which of the following actions must be written to the log file:
+  * 0 quit
+  * 1 delete
+  * 2 fine vita del thread
+  */
 void logExit(int flags,char* name_channel, char ip[]){
-    //TODO
+    int ret;
+
+    file = fopen(NOME_FILE, "a");
+    if (file == NULL)ret = -1;
+    else ret = 0;
+
+    ERROR_HELPER(ret, "Errore apertura file log.txt");
+
+    //	getting current time and date
+    time_t mytime;
+    mytime = time(NULL);
+
+    char* date = ctime(&mytime);
+    
+    switch(flags) {
+        case 0:
+            ret = fprintf(file, "%sClient with IP %s decided to exit channel named %s\n\n\n", date, ip, name_channel);
+            break;
+        case 1:
+            ret = fprintf(file, "%sClient with IP %s, owner of the channel %s, decided to delete the channel \n\n\n", date, ip, name_channel);
+            break;
+        case 2:
+            ret = fprintf(file, "%sClient with IP %s close the connection\n\n\n", date, ip);
+            break;
+        default:
+            break;
+    }
+    ERROR_HELPER(ret, "Errore scrittura operazione server su file");
+    
+    ret = fclose(file);
+    ERROR_HELPER(ret, "Errore chiusura file");
 }
 
 void resetLog() {
