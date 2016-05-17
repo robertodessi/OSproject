@@ -1,4 +1,5 @@
 #include "thread_util.h"
+#include <pthread.h>
 
 
 int invio(char* s, int dest) {
@@ -81,9 +82,8 @@ int leggiMSG(int id_coda, mymsg* recv_message) {
 
     if (msgrcv(id_coda, recv_message, sizeof (mymsg), 1, IPC_NOWAIT) != -1) {
         return 1; //messaggio ricevuto			
-    } else if (errno != ENOMSG) { //ENOMSG: IPC_NOWAIT asserted, and no message exists in the queue to satisfy the request
-        return -1;
-        return -1; //errore!!
+    } else if (errno != ENOMSG) { //ENOMSG: IPC_NOWAIT asserted, and no message exists in the queue to satisfy the reques
+		return -1; //errore!!
     } else {
         return 0; //nessun messaggio ricevuto
     }
@@ -127,6 +127,19 @@ char* prendiNome(char* str, int len, size_t command_len) {
     res[++i] = '\0';
     return res;
 }
+
+
+void freeChannel(channel_struct* channel){
+	int i;
+	for(i=0;i < channel->dim ;i++){
+		if(pthread_self()!=channel->id[i]) pthread_kill(channel->id[i],1);
+	}
+	free(channel->id);
+	free(channel->client_desc);
+	free(channel->name_channel);
+	free(channel);
+}
+
 
 void printList(channel_list_struct* list) {
     int i;

@@ -222,7 +222,8 @@ int main(int argc, char *argv[]) {
 
         //  creo il thread che gestirà il client da ora in avanti
         pthread_t thread;
-
+		
+		printf("%d\n",client_desc);
         // put arguments for the new thread into a buffer
         handler_args_t * thread_args = (handler_args_t*) malloc(sizeof (handler_args_t));
         thread_args -> socket_desc = client_desc; //passo il descrittore del client
