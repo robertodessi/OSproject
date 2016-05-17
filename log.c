@@ -149,7 +149,7 @@ void logChannel(char* command, char* channel, char ip[]){
     file = fopen(NOME_FILE, "a");
     if (file == NULL)ret = -1;
     else ret = 0;
-    // ret = (file == null) ? -1 : 0;
+    
     ERROR_HELPER(ret, "Errore apertura file log.txt");
 
     //	getting current time and date
@@ -170,12 +170,7 @@ void logChannel(char* command, char* channel, char ip[]){
     
 }
 
- /* log method for client actions, name channel is the name of the channel linked to the thread, ip is the client ip,
-  * and flag shows which of the following actions must be written to the log file:
-  * 0 quit
-  * 1 delete
-  * 2 fine vita del thread
-  */
+
 void logExit(int flags,char* name_channel, char ip[]){
     int ret;
 
