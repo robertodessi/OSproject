@@ -96,7 +96,7 @@ int esci(mymsg recv_message, int* is_connect, sem_t* my_named_semaphore, channel
     if (sem_close(my_named_semaphore) == -1) {
         return -1;
     }
-
+    
     //avverto il proprietario di aver fatto la sem_close!!
     mymsg msg;
     msg.mtype = 2; //header del messaggio. 1:delete  2:sem_close
