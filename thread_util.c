@@ -60,8 +60,10 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
         // ret is 1: read available data!
         int flag = 1;
         while (flag) {
+      //while(1) {  // cosi il timeout funziona! da rivedere comportamento con la select!!
             ret = recv(mitt, buf + recv_bytes, buf_len - recv_bytes, 0);
             if (ret < 0 && errno == EINTR) continue;
+            if (ret < 0 && errno == EWOULDBLOCK) return -2;
             if (ret < 0) return -1; //error: return -1
             recv_bytes += ret;
             if (recv_bytes > 0 && buf[recv_bytes - 1] == '\0') {
@@ -132,7 +134,7 @@ char* prendiNome(char* str, int len, size_t command_len) {
 void freeChannel(channel_struct* channel){
 	int i;
 	for(i=0;i < channel->dim ;i++){
-		if(pthread_self()!=channel->id[i]) pthread_kill(channel->id[i],1);
+		if( ((int) pthread_self()) != channel->id[i]) pthread_kill(channel->id[i],1);
 	}
 	free(channel->id);
 	free(channel->client_desc);
@@ -152,7 +154,9 @@ void printList(channel_list_struct* list) {
 void printChannel(channel_struct* channel) {
     printf("\nCHANNEL\n");
     printf("name: %s\n", channel->name_channel);
-    printf("id: %d\n", channel->id);
+    printf("id: \n");
+    for (int i = 0; i < channel->dim; i++) printf("%d, ", channel->id[i]);
+    printf("\n");
     printf("owner: %d\n", channel->owner);
     printf("dimension: %d\n", channel->dim);
     printf("client_desc: ");
