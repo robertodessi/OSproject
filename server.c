@@ -56,7 +56,6 @@ void safe_exit(int dummy1, siginfo_t *info, void *dummy2) {
     strncat(buf, signame, 15);
     logMsg(buf);
     
-    //logMsg("\nServer shutting down, signal caught is: ");
     
     //WARNING!! It's unsafe to use logMsg method in a signal handler routine since calls 
     //          the fprintf method and it is not an async-signal safe function
@@ -214,36 +213,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
         
-        //TIMEOUT on socket client_desc for input and output operations
-        struct timeval timeout;      
-        timeout.tv_sec = TIMEOUT;
-        timeout.tv_usec = 0;
 
-        //ret = setsockopt (client_desc, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
-        ret = setsockopt (client_desc, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-        ERROR_HELPER(ret, "Cannot listen on socket");
-        
-        ret = setsockopt (client_desc, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
-        ERROR_HELPER(ret, "Cannot listen on socket");
-        
-        /*
-         SO_SNDTIMEO is an option to set a timeout value for output operations. 
-         * It accepts a struct timeval parameter with the number of seconds and microseconds used 
-         * to limit waits for output operations to complete. If a send operation has blocked for 
-         * this much time, it returns with a partial count or with the error EWOULDBLOCK if no data 
-         * were sent. In the current implementation, this timer is restarted each time additional data 
-         * are delivered to the protocol, implying that the limit applies to output portions ranging in
-         *  size from the low-water mark to the high-water mark for output.
-
-         SO_RCVTIMEO is an option to set a timeout value for input operations. It accepts a struct timeval 
-         * parameter with the number of seconds and microseconds used to limit waits for input operations 
-         * to complete. In the current implementation, this timer is restarted each time additional data
-         *  are received by the protocol, and thus the limit is in effect an inactivity timer. If a 
-         * receive operation has been blocked for this much time without receiving additional data, it 
-         * returns with a short count or with the error EWOULDBLOCK if no data were received. The struct 
-         * timeval parameter must represent a positive time interval; otherwise, setsockopt() returns with
-         *  the error EDOM.
-         */
 
         // parse client IP address and port
         char client_ip[INET_ADDRSTRLEN];
@@ -257,7 +227,7 @@ int main(int argc, char *argv[]) {
         //  creo il thread che gestirà il client da ora in avanti
         pthread_t thread;
 		
-		printf("%d\n",client_desc);
+        
         // put arguments for the new thread into a buffer
         handler_args_t * thread_args = (handler_args_t*) malloc(sizeof (handler_args_t));
         thread_args -> socket_desc = client_desc; //passo il descrittore del client
