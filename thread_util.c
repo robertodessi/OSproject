@@ -134,7 +134,7 @@ char* prendiNome(char* str, int len, size_t command_len) {
 void freeChannel(channel_struct* channel){
 	int i;
 	for(i=0;i < channel->dim ;i++){
-		if(pthread_self()!=channel->id[i]) pthread_kill(channel->id[i],1);
+		if( ((int) pthread_self()) != channel->id[i]) pthread_kill(channel->id[i],1);
 	}
 	free(channel->id);
 	free(channel->client_desc);
@@ -154,7 +154,9 @@ void printList(channel_list_struct* list) {
 void printChannel(channel_struct* channel) {
     printf("\nCHANNEL\n");
     printf("name: %s\n", channel->name_channel);
-    printf("id: %d\n", channel->id);
+    printf("id: \n";
+    for (int i = 0; i < channel->dim; i++) printf("%d, ", channel->id[i]);
+    printf("\n");
     printf("owner: %d\n", channel->owner);
     printf("dimension: %d\n", channel->dim);
     printf("client_desc: ");
