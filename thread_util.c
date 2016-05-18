@@ -30,7 +30,7 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
     int nfds = mitt + 1;
 
 
-
+    
     while (!shouldStop) {
         // check every 1.5 seconds 
 
@@ -52,18 +52,16 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
         if (leggiMSG(id_coda, recv_message)) {
             esci(*recv_message, is_connect, my_named_semaphore, my_channel, mitt);
         }
-
+        
         if (ret == 0) continue; // timeout expired
-
+        
         printf("è arrivato qualcosa\n");
 
         // ret is 1: read available data!
         int flag = 1;
         while (flag) {
-      //while(1) {  // cosi il timeout funziona! da rivedere comportamento con la select!!
             ret = recv(mitt, buf + recv_bytes, buf_len - recv_bytes, 0);
             if (ret < 0 && errno == EINTR) continue;
-            if (ret < 0 && errno == EWOULDBLOCK) return -2;
             if (ret < 0) return -1; //error: return -1
             recv_bytes += ret;
             if (recv_bytes > 0 && buf[recv_bytes - 1] == '\0') {
