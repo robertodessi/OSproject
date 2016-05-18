@@ -12,6 +12,7 @@ TCPCLIENT.C
 #include <stdio.h>
 #include <winsock.h>
 #include <stdlib.h>
+#include "common.h"
 
 ///#include "helper.h"           /*  Our own helper functions  */
 
@@ -90,6 +91,8 @@ int main(int argc, char *argv[])
 
 	he = NULL;
 
+	int ret;
+
 	/*  Get command line arguments  */
 
 	ParseCmdLine(argc, argv, &szAddress, &szPort);
@@ -99,21 +102,18 @@ int main(int argc, char *argv[])
 
 	port = strtol(szPort, &endptr, 0);
 	if (*endptr){
-		printf("client: porta non riconosciuta.\n");
-		exit(EXIT_FAILURE);
+		ERROR_HELPER(-1, "client: porta non riconosciuta");
 	}
 
 
 	if (WSAStartup(MAKEWORD(1, 1), &wsaData) != 0){
-		printf("errore in WSAStartup()\n");
-		exit(EXIT_FAILURE);
+		ERROR_HELPER(-1, "errore in WSAStartup()");
 	}
 
 	/*  Create the listening socket  */
 
 	if ((socket_desc = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET){
-		fprintf(stderr, "client: errore durante la creazione della socket.\n");
-		exit(EXIT_FAILURE);
+		ERROR_HELPER(-1, "client: errore durante la creazione della socket.");
 	}
 
 
@@ -128,8 +128,7 @@ int main(int argc, char *argv[])
 	if (nRemoteAddr == INADDR_NONE){
 		printf("client: indirizzo IP non valido.\nclient: risoluzione nome...");
 		if ((he = gethostbyname(szAddress)) == 0){
-			printf("fallita.\n");
-			exit(EXIT_FAILURE);
+			ERROR_HELPER(-1, "client: errore durante la gethostbyname.");
 		}
 		printf("riuscita.\n\n");
 		nRemoteAddr = *((u_long *)he->h_addr_list[0]);
@@ -138,9 +137,9 @@ int main(int argc, char *argv[])
 
 
 	/*  connect() to the remote echo server  */
-	if (connect(socket_desc, (struct sockaddr *) &servaddr, sizeof(servaddr)) == SOCKET_ERROR){
-		printf("client: errore durante la connect.\n");
-		exit(EXIT_FAILURE);
+	if (ret=connect(socket_desc, (struct sockaddr *) &servaddr, sizeof(servaddr)) == SOCKET_ERROR){
+		//printf("client: errore durante la connect.\n");
+		ERROR_HELPER(-1, "errore connect");
 	}
 
 
@@ -152,8 +151,7 @@ int main(int argc, char *argv[])
 		&id_recv);
 
 	if (thread_recv == NULL) {
-		printf("cannot create thread %d\n",id_recv);
-		ExitProcess(-1);
+		ERROR_HELPER(-1, "errore thread");
 	}
 
 	thread_send = CreateThread(NULL,
@@ -164,8 +162,7 @@ int main(int argc, char *argv[])
 		&id_send);
 
 	if (thread_send == NULL) {
-		printf("cannot create thread %d\n",id_send);
-		ExitProcess(-1);
+		ERROR_HELPER(-1, "errore thread");
 	}
 
 	WaitForSingleObject(thread_recv, INFINITE);
