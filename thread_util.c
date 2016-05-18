@@ -2,6 +2,7 @@
 #include <pthread.h>
 
 
+
 int invio(char* s, int dest) {
     int ret;
     int left_bytes = sizeof (char)*(strlen(s) + 1);
@@ -28,8 +29,10 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
     struct timeval timeout;
     fd_set read_descriptors;
     int nfds = mitt + 1;
-
-
+	
+	time_t start,end;
+	start=time(NULL);
+	printf("%ld\n",start);
     
     while (!shouldStop) {
         // check every 1.5 seconds 
@@ -53,7 +56,16 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
             esci(*recv_message, is_connect, my_named_semaphore, my_channel, mitt);
         }
         
+        end=time(NULL);
+        
+        if((end-start)>(MINUTES)*60){
+			printf("timeout occured\n");
+			invio("sei stato disconnesso per inattività\0",mitt);
+			return -1;
+		}
         if (ret == 0) continue; // timeout expired
+        
+        start=time(NULL);  //se arriva un messaggio resetto start
         
         printf("è arrivato qualcosa\n");
 

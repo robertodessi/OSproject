@@ -31,7 +31,7 @@
 #define DELETE_COMMAND  "/delete"
 #define SERVER_PORT     2016
 #define NAME_SEM "common_sem"
-
+#define MINUTES 1
 
 //semaforo per channle_list_struct
 sem_t* sem;
