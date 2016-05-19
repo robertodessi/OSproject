@@ -11,7 +11,7 @@
 
 #include "common.h"
 
-//struttira dati per i thread
+//struttura dati per i thread
 typedef struct {
     int desc; //descrittore della socket	
 } struct_arg_client;
@@ -25,59 +25,54 @@ void* invia(void* arg) {
     int ret;
     char buf[1024];
 
-    unsigned int sum = 0;
     while (1) {
         //printf("send: ");
         fgets(buf, 1024, stdin); //fgets prende anche il carattere invio
         size_t buf_len = strlen(buf);
-		//printf("%d\n",buf_len);
-		if(buf_len==1) continue;
-        buf[buf_len-1]='\0';
+        
+        if (buf_len == 1) continue;
+        buf[buf_len - 1] = '\0';
+        
         //--buf_len; // remove '\n' from the end of the message
+        
         while ((ret = send(args->desc, buf, buf_len, 0)) < 0) {
             if (errno == EINTR) continue;
             ERROR_HELPER(-1, "Cannot write to the socket");
         }
-        sum += ret;
+ 
     }
-    // just want to silence annoying warning for now
-    //return (void*) sum;
-    //return (void*) 69;
 }
 
 //funzione che esegue il thread_rcv
 
 void* ricevi(void* arg) {
     struct_arg_client* args = (struct_arg_client*) arg;
-	int ret;
+    int ret;
     unsigned int sum = 0;
     char msg_recv[1024];
     size_t msg_recv_len = sizeof (msg_recv);
     while (1) {
         int recv_bytes = 0;
-        int flag=1;
-	while (flag){
-            ret = recv(args->desc, msg_recv+recv_bytes, msg_recv_len-recv_bytes, 0);
-            if (ret<0 && errno == EINTR) continue;
+        int flag = 1;
+        while (flag) {
+            ret = recv(args->desc, msg_recv + recv_bytes, msg_recv_len - recv_bytes, 0);
+            if (ret < 0 && errno == EINTR) continue;
             //want to silnce again
-            if (ret<0) return (void*)sum;  //error: return -1
-            if(ret < 0) return (void*) 69;
-                    
-            recv_bytes+=ret;
-            if(recv_bytes>0 && msg_recv[recv_bytes-1]=='\0'){
-				 flag=0;
-			 }
-            if(recv_bytes==0)break; 
+            if (ret < 0) return (void*) sum; //error: return -1
+
+            recv_bytes += ret;
+            if (recv_bytes > 0 && msg_recv[recv_bytes - 1] == '\0') {
+                flag = 0;
+            }
+            if (recv_bytes == 0)break;
         }
-        if (!memcmp(msg_recv, "sei stato disconnesso per inattività", sizeof("sei stato disconnesso per inattività"))){
+        if (!memcmp(msg_recv, "sei stato disconnesso per inattività", sizeof ("sei stato disconnesso per inattività"))) {
             break;
         }
         if (recv_bytes > 0)printf("ricevuto: %s\n", msg_recv);
         sum += recv_bytes;
     }
-    // just want to silence annoying warning for now
     return (void*) sum;
-    //return (void*)69;
 
 }
 
@@ -85,7 +80,6 @@ int main(int argc, char* argv[]) {
     int ret;
 
     void* res1;
-    void* res2;
 
     // variables for handling a socket
     int socket_desc;
@@ -132,9 +126,6 @@ int main(int argc, char* argv[]) {
     }
 
 
-
-    //pthread_join(thread_send, &res1);
-    
     pthread_join(thread_rcv, &res1);
 
     //printf("Joined thread1 computing send work and thread2 computing rcv work.\nTotal bytes sent: %d bytes\nTotal bytes received: %d bytes\n", (unsigned int) res1, (unsigned int) res2);
@@ -144,8 +135,6 @@ int main(int argc, char* argv[]) {
     ret = close(socket_desc);
     ERROR_HELPER(ret, "Cannot close socket");
 
-    //free(res1);
-    //free(res2);
     if (DEBUG) fprintf(stderr, "Exiting...\n");
 
     exit(EXIT_SUCCESS);
