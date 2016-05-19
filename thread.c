@@ -709,7 +709,7 @@ void* connection_handler(void* arg) {
 					break;
             }
 
-            if (ret=leggiMSG(id_coda, &recv_message) == 0) {
+            if ((ret=leggiMSG(id_coda, &recv_message)) == 0) {
                 //inoltro del messaggio escuso se stesso
                 int i = 0;
                 for (i = 0; i < my_channel->dim; i++) {
@@ -767,7 +767,7 @@ void* connection_handler(void* arg) {
         invio("spiacenti, si è verificato un errore\0", key);
     }
 
-    if (DEBUG) fprintf(stderr, "Thread created to handle client with IP %s has completed its work, exiting...\n", client_ip);
+        if (DEBUG) fprintf(stderr, "Thread created to handle client with IP %s has completed its work, exiting...\n", client_ip);
     
     logExit(2, NULL, client_ip);
 
@@ -776,5 +776,3 @@ void* connection_handler(void* arg) {
 
     pthread_exit(NULL);
 }
-
-
