@@ -62,8 +62,6 @@ void safe_exit(int dummy1, siginfo_t *info, void *dummy2) {
     
     fflush(stdout);
     close(socket_desc);
-    // FARE LE FREE
-    //free(server_addr);
     sem_close(sem);
     sem_unlink(NAME_SEM);
 
