@@ -13,32 +13,9 @@
 #include <signal.h> //signals handling
 
 
-sem_t * my_named_semaphore = NULL; //semaforo
-char* name_channel = NULL; //nome del canale
-int id_coda; //id della coda di messaggi di questo thread
 
-int sd;
-handler_args_t* args2;
-//struct sockaddr_in* client_addr2;
 
-void cleanup(int signum){
-    
-    int myID = pthread_self();
-    
-    //msgctl(id_coda, IPC_RMID, 0);
-    printf("\nfatto tutto1\n");
-    close(sd);
-    printf("\nfatto tutto2\n");
-    //free(client_addr2); // do not forget to free this buffer!
-    //free(args2);
-    printf("\nfatto tutto3\n");
-    sem_close(my_named_semaphore);
-    printf("\nfatto tutto4\n");
-    sem_unlink(name_channel);
-    printf("\nfatto tutto5\n");
-    printf("\nfatto tutto\n");
-    pthread_exit(NULL);           
-}
+
 
 //====================================
 //			THREAD
@@ -48,24 +25,17 @@ void* connection_handler(void* arg) {
 
     handler_args_t* args = (handler_args_t*) arg;
     
-    args2 = args;
-    //client_addr2 = args->client_addr;
-    sd = args->socket_desc;
-    
-    struct sigaction act;
-    act.sa_handler = cleanup;
-    sigaction(SIGURG, &act, NULL);
-    
+ 
     mymsg recv_message; //messaggio ricevuto dalla coda dei messaggi
-    //int id_coda; //id della coda di messaggi di questo thread
+    int id_coda; //id della coda di messaggi di questo thread
     int key; //chiave per la coda (vedi: msgget) è uguale al descrittore del socket
-    //sem_t* my_named_semaphore; //nome del semaforo del canale
+    sem_t* my_named_semaphore; //nome del semaforo del canale
 
     int is_connect; //flag che indica se il client è connesso ad un canale oppure no
     channel_struct* my_channel; //channel_list_struct* channel_list;
 
-    //my_named_semaphore = NULL; //semaforo
-    //char* name_channel = NULL; //nome del canale
+    my_named_semaphore = NULL; //semaforo
+    char* name_channel = NULL; //nome del canale
 
     int i, ret, recv_bytes;
 
@@ -423,7 +393,7 @@ void* connection_handler(void* arg) {
             }
  
             ret = sem_post(sem);
-            if (ret == -1) ret = sem_post(my_named_semaphore); //retry
+            if (ret == -1) ret = sem_post(sem); //retry
             if (ret == -1) { //if another error occurr 
                 printf("spiacenti, si è verificato un errore\n");
                 sem_close(sem);
