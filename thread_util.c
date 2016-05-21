@@ -81,6 +81,8 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
             }
             if (recv_bytes == 0)break;
         }
+        int i;
+        for(i=0;i<recv_bytes-1;i++)printf("%c=%d\n",buf[i],(int)buf[i]);
         recv_bytes--;
         shouldStop = 1;
 
