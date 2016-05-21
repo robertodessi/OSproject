@@ -42,5 +42,7 @@ int leggiMSG(int id_coda, mymsg* recv_message);
 int esci(mymsg recv_message, int* is_connect,sem_t* my_named_semaphore,channel_struct* my_channel, int client_desc);
 
 
+void freeChannel(channel_struct* channel);
+
 
 #endif	/* THREAD_UTIL_H */

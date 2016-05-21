@@ -1,16 +1,23 @@
 #include "thread_util.h"
+#include <pthread.h>
+
 
 
 int invio(char* s, int dest) {
     int ret;
     int left_bytes = sizeof (char)*(strlen(s) + 1);
-    int sent_bytes =0 ;
-    while (left_bytes > 0){
-		ret = send(dest, s+sent_bytes, left_bytes, MSG_CONFIRM);
-		if (ret<0 && errno == EINTR) continue;
-		if(ret<0) return -1;  //error: return -1;
-		sent_bytes+=ret;
-		left_bytes-=ret;        
+    int sent_bytes = 0;
+    while (left_bytes > 0) {
+#ifdef __linux__
+        ret = send(dest, s + sent_bytes, left_bytes, MSG_CONFIRM);
+#endif
+#ifdef  __APPLE__
+        ret = send(dest, s + sent_bytes, left_bytes, 0);
+#endif
+        if (ret < 0 && errno == EINTR) continue;
+        if (ret < 0) return -1; //error: return -1;
+        sent_bytes += ret;
+        left_bytes -= ret;
     }
     return 0;
 }
@@ -22,9 +29,11 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
     struct timeval timeout;
     fd_set read_descriptors;
     int nfds = mitt + 1;
-
-
-
+	
+	time_t start,end;
+	start=time(NULL);
+	printf("%ld\n",start);
+    
     while (!shouldStop) {
         // check every 1.5 seconds 
 
@@ -39,29 +48,38 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
 
 
         if (ret == -1 && errno == EINTR) continue;
-        if(ret==-1) return -1;
+        if (ret == -1) return -1;
 
 
         //controllo periodicamente se è arrivato qualche messaggio
         if (leggiMSG(id_coda, recv_message)) {
             esci(*recv_message, is_connect, my_named_semaphore, my_channel, mitt);
         }
-
+        
+        end=time(NULL);
+        
+        if((end-start)>(MINUTES)*60){
+			printf("timeout occured\n");
+			invio("sei stato disconnesso per inattività\0",mitt);
+			return -1;
+		}
         if (ret == 0) continue; // timeout expired
-
+        
+        start=time(NULL);  //se arriva un messaggio resetto start
+        
         printf("è arrivato qualcosa\n");
 
         // ret is 1: read available data!
-        int flag=1;
-		while (flag){
-			ret = recv(mitt, buf+recv_bytes, buf_len-recv_bytes, 0);
-            if (ret<0 && errno == EINTR) continue;
-            if (ret<0) return -1;  //error: return -1
-            recv_bytes+=ret;
-            if(recv_bytes>0 && buf[recv_bytes-1]=='\0'){
-				 flag=0;
-			 }
-            if(recv_bytes==0)break; 
+        int flag = 1;
+        while (flag) {
+            ret = recv(mitt, buf + recv_bytes, buf_len - recv_bytes, 0);
+            if (ret < 0 && errno == EINTR) continue;
+            if (ret < 0) return -1; //error: return -1
+            recv_bytes += ret;
+            if (recv_bytes > 0 && buf[recv_bytes - 1] == '\0') {
+                flag = 0;
+            }
+            if (recv_bytes == 0)break;
         }
         recv_bytes--;
         shouldStop = 1;
@@ -76,9 +94,8 @@ int leggiMSG(int id_coda, mymsg* recv_message) {
 
     if (msgrcv(id_coda, recv_message, sizeof (mymsg), 1, IPC_NOWAIT) != -1) {
         return 1; //messaggio ricevuto			
-    } else if (errno != ENOMSG) { //ENOMSG: IPC_NOWAIT asserted, and no message exists in the queue to satisfy the request
-        return -1;
-        return -1; //errore!!
+    } else if (errno != ENOMSG) { //ENOMSG: IPC_NOWAIT asserted, and no message exists in the queue to satisfy the reques
+		return -1; //errore!!
     } else {
         return 0; //nessun messaggio ricevuto
     }
@@ -91,34 +108,30 @@ int esci(mymsg recv_message, int* is_connect, sem_t* my_named_semaphore, channel
     if (sem_close(my_named_semaphore) == -1) {
         return -1;
     }
-
+    
     //avverto il proprietario di aver fatto la sem_close!!
     mymsg msg;
     msg.mtype = 2; //header del messaggio. 1:delete  2:sem_close
     strcpy(msg.mtext, "semclose\0");
+    
+        int id_coda_other = msgget(my_channel->client_desc[0], IPC_EXCL | 0666); //prendo la coda di messaggi del proprietario...
+        if (id_coda_other == -1) {
+            printf("cannot open server queue, please check with the problem\n");
+            return -1;
+        }
+        if (msgsnd(id_coda_other, &msg, SIZE, FLAG) == -1) { //...gli invio il messaggio
+            printf("cannot return response to the client\n");
+            return -1;
+        } else if (DEBUG)printf("invio a %d of type %ld - receive %s\n", id_coda_other, msg.mtype, msg.mtext);
 
-    int id_coda_other = msgget(my_channel->client_desc[0], IPC_EXCL | 0666); //prendo la coda di messaggi del proprietario...
-    if (id_coda_other == -1) {
-        printf("cannot open server queue, please check with the problem\n");
-        return -1;
-    }
-    if (msgsnd(id_coda_other, &msg, SIZE, FLAG) == -1) { //...gli invio il messaggio
-        printf("cannot return response to the client\n");
-        return -1;
-    } else if (DEBUG)printf("invio a %d of type %ld - receive %s\n", id_coda_other, msg.mtype, msg.mtext);
-
-    my_channel = NULL;
+        my_channel = NULL;
     invio("sei stato disconnesso dal canale\0", client_desc); //avverto il client che è stato disconnesso dal canale
-	return 0;
+    return 0;
 }
 
 
-/**TODO: togliere gli spazi alla fine del nome **/
 char* prendiNome(char* str, int len, size_t command_len) {
     char* res = (char*) malloc(sizeof (char) * (len - command_len));
-    /* Warning: 
-     * in questo momento il comando funziona anche senza spazio tra il comando e il nome (es:  /create<nome_canale>) 
-     * funziona anche se ci sono più spazi */
     int index = command_len;
     int i = 0;
     while (str[index] == ' ') index++; //tolgo gli eventuali spazi tra il comando e il nome del canale  
@@ -126,6 +139,19 @@ char* prendiNome(char* str, int len, size_t command_len) {
     res[++i] = '\0';
     return res;
 }
+
+
+void freeChannel(channel_struct* channel){
+	int i;
+	for(i=0;i < channel->dim ;i++){
+		if( ((int) pthread_self()) != channel->id[i]) pthread_kill(channel->id[i],1);
+	}
+	free(channel->id);
+	free(channel->client_desc);
+	free(channel->name_channel);
+	free(channel);
+}
+
 
 void printList(channel_list_struct* list) {
     int i;
@@ -138,7 +164,9 @@ void printList(channel_list_struct* list) {
 void printChannel(channel_struct* channel) {
     printf("\nCHANNEL\n");
     printf("name: %s\n", channel->name_channel);
-    printf("id: %d\n", channel->id);
+    printf("id: \n");
+    for (int i = 0; i < channel->dim; i++) printf("%d, ", channel->id[i]);
+    printf("\n");
     printf("owner: %d\n", channel->owner);
     printf("dimension: %d\n", channel->dim);
     printf("client_desc: ");
