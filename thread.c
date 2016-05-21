@@ -116,6 +116,7 @@ void* connection_handler(void* arg) {
         //se un client si disconnette la recv ritorna 0 => recv_bytes==0
         if (recv_bytes <= 0) {
             if (DEBUG) printf("client %d disconnesso\n", key);
+            if(!is_connect) break;
             command = 1;
             if (is_connect) {
                 if (my_channel->owner == key) {
