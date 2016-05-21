@@ -115,18 +115,18 @@ int esci(mymsg recv_message, int* is_connect, sem_t* my_named_semaphore, channel
     mymsg msg;
     msg.mtype = 2; //header del messaggio. 1:delete  2:sem_close
     strcpy(msg.mtext, "semclose\0");
+    
+        int id_coda_other = msgget(my_channel->client_desc[0], IPC_EXCL | 0666); //prendo la coda di messaggi del proprietario...
+        if (id_coda_other == -1) {
+            printf("cannot open server queue, please check with the problem\n");
+            return -1;
+        }
+        if (msgsnd(id_coda_other, &msg, SIZE, FLAG) == -1) { //...gli invio il messaggio
+            printf("cannot return response to the client\n");
+            return -1;
+        } else if (DEBUG)printf("invio a %d of type %ld - receive %s\n", id_coda_other, msg.mtype, msg.mtext);
 
-    int id_coda_other = msgget(my_channel->client_desc[0], IPC_EXCL | 0666); //prendo la coda di messaggi del proprietario...
-    if (id_coda_other == -1) {
-        printf("cannot open server queue, please check with the problem\n");
-        return -1;
-    }
-    if (msgsnd(id_coda_other, &msg, SIZE, FLAG) == -1) { //...gli invio il messaggio
-        printf("cannot return response to the client\n");
-        return -1;
-    } else if (DEBUG)printf("invio a %d of type %ld - receive %s\n", id_coda_other, msg.mtype, msg.mtext);
-
-    my_channel = NULL;
+        my_channel = NULL;
     invio("sei stato disconnesso dal canale\0", client_desc); //avverto il client che è stato disconnesso dal canale
     return 0;
 }

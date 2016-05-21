@@ -17,12 +17,23 @@
 //  socekt descriptor
 int socket_desc, client_desc;
 
+int numThreads;
+    
+int * list;
+
+void alertThread(){
+
+    }
+
 
 void error_handling(int signal, void (*handler)(int, siginfo_t *, void *)) {
     struct sigaction act;
     act.sa_sigaction = handler;
     act.sa_flags = SA_SIGINFO;
-    sigaction(signal, &act, NULL);
+    if (sigaction(signal, &act, NULL) == -1) {
+        printf("Errore Sigaction\n");
+        exit(0);
+    }
 }
 
 void safe_exit(int dummy1, siginfo_t *info, void *dummy2) {
@@ -54,16 +65,21 @@ void safe_exit(int dummy1, siginfo_t *info, void *dummy2) {
     
     strncpy(buf, "\nServer shutting down, signal caught is: ", 60);
     strncat(buf, signame, 15);
+   
+    
+    // fare la write invece che log!
+   
     logMsg(buf);
     
     
     //WARNING!! It's unsafe to use logMsg method in a signal handler routine since calls 
     //          the fprintf method and it is not an async-signal safe function
     
+    alertThread();
+    free(list);
+    
     fflush(stdout);
     close(socket_desc);
-    // FARE LE FREE
-    //free(server_addr);
     sem_close(sem);
     sem_unlink(NAME_SEM);
 
@@ -76,6 +92,9 @@ void gestione_sigsegv(int dummy1, siginfo_t *info, void *dummy2) {
     address = (unsigned int) info->si_addr;
     if(DEBUG) printf("segfault occurred (address is %x)\n", address);
     logSeg(address);
+    
+    alertThread();
+    
     fflush(stdout);
     close(socket_desc);
     sem_close(sem);
@@ -103,6 +122,8 @@ int main(int argc, char *argv[]) {
 
     //	error check descriptor 
     int ret;
+    
+    list = (int *) malloc(0);
 
     //  some fields are required to be filled with 0
     //  struct containing server info
@@ -153,7 +174,7 @@ int main(int argc, char *argv[]) {
     
     ret = sigdelset(&mask, SIGSEGV);
     ERROR_HELPER(ret, "Errore nella sigdelset(SIGSEGV)\n\n");
-
+    
     ret = pthread_sigmask(SIG_BLOCK, &mask, NULL);
     ERROR_HELPER(ret, "Errore nella pthread_sigmask\n\n");
 
@@ -213,7 +234,9 @@ int main(int argc, char *argv[]) {
             continue;
         }
         
-
+        numThreads++;
+        list = (int *) realloc(list, sizeof(int)*numThreads);
+        list[numThreads-1] = client_desc;
 
         // parse client IP address and port
         char client_ip[INET_ADDRSTRLEN];
@@ -245,7 +268,9 @@ int main(int argc, char *argv[]) {
         
         logMsg("New thread created to handle the request!");
         
-        pthread_detach(thread); // I won't phtread_join() on this thread	
+
+        
+        pthread_detach(thread); // I won't phtread_join() on this thread
 
         // we can't just reset fields: we need a new buffer for client_addr!
         client_addr = calloc(1, sizeof (struct sockaddr_in));

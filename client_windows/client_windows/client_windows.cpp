@@ -13,12 +13,33 @@ TCPCLIENT.C
 #include <winsock.h>
 #include <stdlib.h>
 
+#include "common.h"
+
 ///#include "helper.h"           /*  Our own helper functions  */
 
 /*  Global constants  */
 
 #define MAX_LINE           (1000)
 #define MAX_CHAR           (1000)
+
+
+SOCKET    socket_desc;           /*  connection socket         */
+long port;                  /*  port number               */
+struct    sockaddr_in servaddr;  /*  socket address structure  */
+char     *szAddress;             /*  Holds remote IP address   */
+char     *szPort;                /*  Holds remote port         */
+char     *endptr;                /*  for strtol()              */
+struct	  hostent *he;
+
+
+
+int  myhandler(int event) {
+	printf("received CTRL+C\n");
+	if (szAddress!=NULL)	free(szAddress);
+	if (szPort != NULL)		free(szPort);
+	if (endptr != NULL)		free(endptr);	
+	ExitProcess(0);
+}
 
 int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort);
 
@@ -40,7 +61,14 @@ void* Ricevi(int socket_desc){
 			}
 			if (recv_bytes == 0)break;
 		}
-		if (recv_bytes > 0)printf("ricevuto: %s\n", msg_recv);
+		
+		if (recv_bytes > 0) {
+			//printf("\033[%d;%dH", x, y);
+			int i;
+			for (i = 0; i < recv_bytes; i++) convertitoreUW(&msg_recv[i]);//printf("ricevi %c=%d ", msg_recv[i], msg_recv[i]);
+			printf("ricevuto: %s\n", msg_recv);
+		
+		}
 		sum += recv_bytes;
 	}
 	return (void*)sum;
@@ -49,15 +77,18 @@ void* Ricevi(int socket_desc){
 void* Invia(int socket_desc) {	
 	int ret;
 	char buf[1024];
-
 	unsigned int sum = 0;
 	while (1) {
-		//printf("send: ");
+		
+		printf("send: ");
 		fgets(buf, 1024, stdin); //fgets prende anche il carattere invio
 		size_t buf_len = strlen(buf);
 		//printf("%d\n",buf_len);
 		if (buf_len == 1) continue;
 		buf[buf_len - 1] = '\0';
+		int i;
+	
+		//for (i = 0; i < buf_len - 1; i++) 	convertitoreUA(buf[i]);//printf("%c=%d\n", buf[i], buf[i]);
 		//--buf_len; // remove '\n' from the end of the message
 		while ((ret = send(socket_desc, buf, buf_len, 0)) < 0) {
 			if (errno == EINTR) continue;
@@ -72,14 +103,6 @@ void* Invia(int socket_desc) {
 
 int main(int argc, char *argv[])
 {
-	SOCKET    socket_desc;           /*  connection socket         */
-	long port;                  /*  port number               */
-	struct    sockaddr_in servaddr;  /*  socket address structure  */
-	char     *szAddress;             /*  Holds remote IP address   */
-	char     *szPort;                /*  Holds remote port         */
-	char     *endptr;                /*  for strtol()              */
-	struct	  hostent *he;
-
 	HANDLE thread_recv;
 	HANDLE thread_send;
 	DWORD id_recv;
@@ -88,32 +111,36 @@ int main(int argc, char *argv[])
 	u_long    nRemoteAddr;
 	WSADATA   wsaData;
 
+
 	he = NULL;
+
+	int ret;
+
+
+	SetConsoleCtrlHandler((PHANDLER_ROUTINE)myhandler, 1);
 
 	/*  Get command line arguments  */
 
-	ParseCmdLine(argc, argv, &szAddress, &szPort);
-
+	//ParseCmdLine(argc, argv, &szAddress, &szPort);
+	szAddress = "192.168.1.73";
+	szPort = "2016";
 
 	/*  Set the remote port  */
 
 	port = strtol(szPort, &endptr, 0);
 	if (*endptr){
-		printf("client: porta non riconosciuta.\n");
-		exit(EXIT_FAILURE);
+		ERROR_HELPER(-1, "client: porta non riconosciuta");
 	}
 
 
 	if (WSAStartup(MAKEWORD(1, 1), &wsaData) != 0){
-		printf("errore in WSAStartup()\n");
-		exit(EXIT_FAILURE);
+		ERROR_HELPER(-1, "errore in WSAStartup()");
 	}
 
 	/*  Create the listening socket  */
 
 	if ((socket_desc = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET){
-		fprintf(stderr, "client: errore durante la creazione della socket.\n");
-		exit(EXIT_FAILURE);
+		ERROR_HELPER(-1, "client: errore durante la creazione della socket.");
 	}
 
 
@@ -128,8 +155,7 @@ int main(int argc, char *argv[])
 	if (nRemoteAddr == INADDR_NONE){
 		printf("client: indirizzo IP non valido.\nclient: risoluzione nome...");
 		if ((he = gethostbyname(szAddress)) == 0){
-			printf("fallita.\n");
-			exit(EXIT_FAILURE);
+			ERROR_HELPER(-1, "client: errore durante la gethostbyname.");
 		}
 		printf("riuscita.\n\n");
 		nRemoteAddr = *((u_long *)he->h_addr_list[0]);
@@ -138,11 +164,12 @@ int main(int argc, char *argv[])
 
 
 	/*  connect() to the remote echo server  */
-	if (connect(socket_desc, (struct sockaddr *) &servaddr, sizeof(servaddr)) == SOCKET_ERROR){
-		printf("client: errore durante la connect.\n");
-		exit(EXIT_FAILURE);
+	if (ret=connect(socket_desc, (struct sockaddr *) &servaddr, sizeof(servaddr)) == SOCKET_ERROR){
+		//printf("client: errore durante la connect.\n");
+		ERROR_HELPER(-1, "errore connect");
 	}
 
+	printf("client: connesso al server.\n");
 
 	thread_recv = CreateThread(NULL,
 		0,
@@ -152,8 +179,7 @@ int main(int argc, char *argv[])
 		&id_recv);
 
 	if (thread_recv == NULL) {
-		printf("cannot create thread %d\n",id_recv);
-		ExitProcess(-1);
+		ERROR_HELPER(-1, "errore thread");
 	}
 
 	thread_send = CreateThread(NULL,
@@ -164,8 +190,7 @@ int main(int argc, char *argv[])
 		&id_send);
 
 	if (thread_send == NULL) {
-		printf("cannot create thread %d\n",id_send);
-		ExitProcess(-1);
+		ERROR_HELPER(-1, "errore thread");
 	}
 
 	WaitForSingleObject(thread_recv, INFINITE);
@@ -202,3 +227,48 @@ int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort){
 	}
 	return 0;
 }
+
+//converte le lettere da unix a windows
+int convertitoreUW(char* n) {	
+	if (*n == -61 && *(n + 1) == -87) { //é
+		*n = -126;
+		*(n + 1) = ' ';
+	}
+	if (*n == -61 && *(n + 1) == -88) { //è
+		*n = -118;
+		*(n + 1) = ' ';
+	}
+	if (*n == -61 && *(n + 1) == -96) { //à
+		*n = -123;
+		*(n + 1) = ' ';
+	} 
+	if (*n == -61 && *(n + 1) == -71) { //ù
+		*n = -105;
+		*(n + 1) = ' ';
+	}
+	if (*n == -61 && *(n + 1) == -78) { //ò
+		*n = -107;
+		*(n + 1) = ' ';
+	}
+	if (*n == -61 && *(n + 1) == -84) { //ì
+		*n = -115;
+		*(n + 1) = ' ';
+	}
+	if (*n == -62 && *(n + 1) == -93) { //£
+		*n = -100;
+		*(n + 1) = ' ';
+	}
+	if (*n == -62 && *(n + 1) == -80) { //°
+		*n = -8;
+		*(n + 1) = ' ';
+	}
+	if (*n == -61 && *(n + 1) == -89) { //ç
+		*n = -121;
+		*(n + 1) = ' ';
+	}
+	if (*n == -62 && *(n + 1) == -89) { //§
+		*n = -11;
+		*(n + 1) = ' ';
+	}
+}
+
