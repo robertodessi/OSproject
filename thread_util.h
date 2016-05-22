@@ -39,10 +39,8 @@ int ricevi(char* buf,size_t buf_len,int mitt,int id_coda,mymsg* recv_message,int
 int leggiMSG(int id_coda, mymsg* recv_message);
 
 //quando un canale sta per essere chiuso, questa funzione farà tutto il necessario per disconnettersi in maniera "pulita"
-int esci(mymsg recv_message, int* is_connect,sem_t* my_named_semaphore,channel_struct* my_channel, int client_desc);
+int esci( int* is_connect,sem_t* my_named_semaphore,channel_struct* my_channel, int client_desc);
 
-
-void freeChannel(channel_struct* channel);
 
 
 #endif	/* THREAD_UTIL_H */

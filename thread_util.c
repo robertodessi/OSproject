@@ -32,7 +32,7 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
 	
 	time_t start,end;
 	start=time(NULL);
-	printf("%ld\n",start);
+	//printf("%ld\n",start);
     
     while (!shouldStop) {
         // check every 1.5 seconds 
@@ -54,11 +54,10 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
         int temp = leggiMSG(id_coda, recv_message);
         //controllo periodicamente se è arrivato qualche messaggio
         if ( temp == 1 ) {
-            esci(*recv_message, is_connect, my_named_semaphore, my_channel, mitt);
-        }else if ( temp == 3) {
-            //esci(*recv_message, is_connect, my_named_semaphore, my_channel, mitt);        
-            sem_close(my_named_semaphore);
-            return -2;
+			esci(is_connect, my_named_semaphore, my_channel, mitt);
+			if(strcmp(recv_message->mtext,"killthemall\0")==0) return -3; //se il proprietario mi dice che devo uccidere il thread ritorna -3
+        }else if ( temp == 3) {        
+            return -2;   //se il mainprocess invia un messaggio di tipo 3  ritorna -2
         }
         
         end=time(NULL);
@@ -86,8 +85,8 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
             }
             if (recv_bytes == 0)break;
         }
-        int i;
-        for(i=0;i<recv_bytes-1;i++)printf("%c=%d\n",buf[i],(int)buf[i]);
+        //int i;
+        //for(i=0;i<recv_bytes-1;i++)printf("%c=%d\n",buf[i],(int)buf[i]);
         recv_bytes--;
         shouldStop = 1;
 
@@ -98,45 +97,48 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
 
 int leggiMSG(int id_coda, mymsg* recv_message) {
     //utilizzo il tipo 1 per i messaggi di delete
+    //2 per ack
+    //3 per sigterm
 
     if (msgrcv(id_coda, recv_message, sizeof (mymsg), 3 , IPC_NOWAIT) != -1){ 
-        return 3;
+        return 3;  //messaggio 3 ricevuto
     } else if (errno != ENOMSG) { //ENOMSG: IPC_NOWAIT asserted, and no message exists in the queue to satisfy the reques
 		return -1; //errore!!
     }
     
     if (msgrcv(id_coda, recv_message, sizeof (mymsg), 1, IPC_NOWAIT) != -1) {
-        return 1; //messaggio ricevuto			
+        return 1; //messaggio  1 ricevuto			
     } else if (errno != ENOMSG) { //ENOMSG: IPC_NOWAIT asserted, and no message exists in the queue to satisfy the reques
 		return -1; //errore!!
     }
     return 0; //nessun messaggio ricevuto
 }
 
-int esci(mymsg recv_message, int* is_connect, sem_t* my_named_semaphore, channel_struct* my_channel, int client_desc) {
+int esci(int* is_connect, sem_t* my_named_semaphore, channel_struct* my_channel, int client_desc) {
     //il canale sta per essere eliminato quindi esco
-    if (DEBUG)printf("asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext);
+    //if (DEBUG)printf("asked service of type %ld - receive %s\n", recv_message.mtype, recv_message.mtext);
     *is_connect = 0;
     if (sem_close(my_named_semaphore) == -1) {
         return -1;
     }
     
-        //avverto il proprietario di aver fatto la sem_close!!
-        mymsg msg;
-        msg.mtype = 2; //header del messaggio. 1:delete  2:sem_close
-        strcpy(msg.mtext, "semclose\0");
+	//avverto il proprietario di aver fatto la sem_close!!
+	mymsg msg;
+	msg.mtype = 2; //header del messaggio. 1:delete  2:sem_close 3:kill
+	strcpy(msg.mtext, "semclose\0");
 
-            int id_coda_other = msgget(my_channel->client_desc[0], IPC_EXCL | 0666); //prendo la coda di messaggi del proprietario...
-            if (id_coda_other == -1) {
-                printf("cannot open server queue, please check with the problem\n");
-                return -1;
-            }
-            if (msgsnd(id_coda_other, &msg, SIZE, FLAG) == -1) { //...gli invio il messaggio
-                printf("cannot return response to the client\n");
-                return -1;
-            } else if (DEBUG)printf("invio a qui %d of type %ld - receive %s\n", id_coda_other, msg.mtype, msg.mtext);
+	int id_coda_other = msgget(my_channel->client_desc[0], IPC_EXCL | 0666); //prendo la coda di messaggi del proprietario...
+	if (id_coda_other == -1) {
+		printf("cannot open server queue, please check with the problem\n");
+		return -1;
+	}
+	if (msgsnd(id_coda_other, &msg, SIZE, FLAG) == -1) { //...gli invio il messaggio
+		printf("cannot return response to the client\n");
+		return -1;
+	} 
+	if (DEBUG)printf("invio il type %ld -con sciitto %s\n", msg.mtype, msg.mtext);
 
-            my_channel = NULL;
+	my_channel = NULL;
     invio("sei stato disconnesso dal canale\0", client_desc); //avverto il client che è stato disconnesso dal canale
     return 0;
 }
@@ -152,17 +154,6 @@ char* prendiNome(char* str, int len, size_t command_len) {
     return res;
 }
 
-
-void freeChannel(channel_struct* channel){
-	int i;
-	for(i=0;i < channel->dim ;i++){
-		if( ((int) pthread_self()) != channel->id[i]) pthread_kill(channel->id[i],1);
-	}
-	free(channel->id);
-	free(channel->client_desc);
-	free(channel->name_channel);
-	free(channel);
-}
 
 
 void printList(channel_list_struct* list) {
