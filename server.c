@@ -50,14 +50,11 @@ void alertThread(){
             } else printf("\ninvio a  controllo %d al canale %d\n", channel_list->channel[i]->client_desc[0], id_coda_other);        
     }
     
-    printf("sto qui\n");
-    printf("i = %d\n", i);
-    printf("max = %d\n", max);
     
     for(i = 0; i < max; i++){
             printf("iniziato secondo ciclo\n");
             ret = (msgrcv(server_q, &inbox, sizeof (inbox), 2, FLAG));
-            
+            fprintf(stderr, "errn is: %s\n",strerror(errno));
             printf("ret is: %d\n", ret);
             if (ret == -1) {
                 printf("spiacenti, si è verificato un errore\n");
@@ -67,9 +64,7 @@ void alertThread(){
                 printf("messaggio ricevuto");
             }
     }
-    printf("i = %d\n", i);
-    printf("quibella\n");
-    printf("sono :%d \n", channel_list->num_channels);
+    
     sem_post(sem);
 }
 
