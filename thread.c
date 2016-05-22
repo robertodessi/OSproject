@@ -506,6 +506,24 @@ void* connection_handler(void* arg) {
             command = 1;
 
             my_named_semaphore = sem_open(name_channel, 0); // mode is 0: sem_open is not allowed to create it!
+            
+                       
+			/**INIZIO SEZIONE CRITICA PER LA LISTA**/
+			if (DEBUG)printf("tutti sono usciti\n");
+            if(!msgServer){
+			ret = sem_wait(sem);
+			if (ret == -1) {
+				sem_close(sem);
+				sem_unlink(NAME_SEM);
+				sem = sem_open(NAME_SEM, O_CREAT | O_EXCL, 0666, 1);
+				if (sem == SEM_FAILED) { 
+					free(name_channel);
+					invio("spiacenti, si è verificato un errore\0", key);
+					break;
+				}
+				ret = sem_wait(sem);
+			}
+            }
 
             /**INIZIO SEZIONE CRITICA PER IL CANALE**/
             ret = sem_wait(my_named_semaphore);
@@ -542,6 +560,14 @@ void* connection_handler(void* arg) {
                     }
                 }
 
+				ret = sem_post(my_named_semaphore);
+                if (ret == -1) {
+                    printf("spiacenti, si è verificato un errore\n");
+                    invio("spiacenti, si è verificato un errore\0", key);
+                    continue;
+                }
+                /**FINE SEZIONE CRITICA PER IL CANALE**/
+                
                 //ora attendo la conferma che tutti abbiano fatto la sem_close
                 //utilizzo il tipo 2 per i messaggi di sem_close
                 //aspetto la conferma da tutti (tranne se stesso)
