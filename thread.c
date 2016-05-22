@@ -509,7 +509,7 @@ void* connection_handler(void* arg) {
                             invio("spiacenti, si è verificato un errore\0", key);
                             continue;
                         } else {
-                            if (DEBUG)printf("invio il tipo %ld con scritto %s\n", recv_message.mtype, recv_message.mtext);
+                            if (DEBUG)printf("imessaggio ricevuto da %d tipo %ld con scritto %s\n", my_channel->client_desc[i],recv_message.mtype, recv_message.mtext);
                             printf("messaggio ricevuto");
                         }
 
@@ -707,7 +707,7 @@ void* connection_handler(void* arg) {
     }
 	
     ret = msgctl(id_coda, IPC_RMID, 0);
- 
+ printf("ho chiuso la coda %d!!!!!! ret= %d\n",key,ret);
     // close socket
     ret |= close(args->socket_desc);
     if (ret == -1) {
