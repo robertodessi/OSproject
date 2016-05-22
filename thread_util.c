@@ -52,11 +52,14 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
 
         
         int temp = leggiMSG(id_coda, recv_message);
+        
         //controllo periodicamente se è arrivato qualche messaggio
-        if ( temp == 1 ) {
+        if ( temp == 1 ) {	
+			printf("sono %d ricevuto msg tipo %d testo %s\n", mitt, recv_message->mtype, recv_message->mtext);	
 			esci(is_connect, my_named_semaphore, my_channel, mitt);
 			if(strcmp(recv_message->mtext,"killthemall\0")==0) return -3; //se il proprietario mi dice che devo uccidere il thread ritorna -3
-        }else if ( temp == 3) {        
+        }else if ( temp == 3) {  
+			printf("sono %d ricevuto msg tipo %d testo %s\n", mitt,recv_message->mtype, recv_message->mtext);      
             return -2;   //se il mainprocess invia un messaggio di tipo 3  ritorna -2
         }
         
@@ -136,7 +139,7 @@ int esci(int* is_connect, sem_t* my_named_semaphore, channel_struct* my_channel,
 		printf("cannot return response to the client\n");
 		return -1;
 	} 
-	if (DEBUG)printf("invio il type %ld -con sciitto %s\n", msg.mtype, msg.mtext);
+	if (DEBUG)printf("sono %d ricevuto msg tipo %d testo %s\n", client_desc,msg.mtype,msg.mtext);
 
 	my_channel = NULL;
     invio("sei stato disconnesso dal canale\0", client_desc); //avverto il client che è stato disconnesso dal canale

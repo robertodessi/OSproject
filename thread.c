@@ -108,7 +108,7 @@ void* connection_handler(void* arg) {
     //if (DEBUG) printf("\tla mia coda: %d\n", id_coda);
    
     while (1) {
-       // if (DEBUG) printList(args->channel_list);
+        if (DEBUG) printList(args->channel_list);
 
         command = 0; //setto il flag a false
 
@@ -177,7 +177,7 @@ void* connection_handler(void* arg) {
                 invio("il nome del canale non può essere vuoto\0", args->socket_desc);
                 continue;
             }
-printf("a\n");
+
             /**INIZIO SEZIONE CRITICA PER LA LISTA**/
             ret = sem_wait(sem);
             if (ret == -1) {
@@ -486,7 +486,7 @@ printf("a\n");
                             printf("spiacenti, si è verificato un errore\n");
                             invio("spiacenti, si è verificato un errore\0", key);
                             continue;
-                        } else printf("invio a %d al canale %d\n", my_channel->client_desc[i], id_coda_other);
+                        } else printf("invio al canale di %d \n", my_channel->client_desc[i]);
                     }
                 }
 

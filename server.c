@@ -28,7 +28,7 @@ void alertThread(){
     
     mymsg msgServer; //struttura per il messaggio da inviare
     msgServer.mtype = 3; //header del messaggio. 1:delete  2:sem_close
-    strcpy(msgServer.mtext, "delete\0"); //testo del messaggio
+    strcpy(msgServer.mtext, "kill\0"); //testo del messaggio
     
     mymsg inbox;
     
@@ -50,12 +50,13 @@ void alertThread(){
             } else printf("\ninvio a  controllo %d al canale %d\n", channel_list->channel[i]->client_desc[0], id_coda_other);        
     }
     
+    sem_post(sem);
     
     for(i = 0; i < max; i++){
             printf("iniziato secondo ciclo\n");
             ret = (msgrcv(server_q, &inbox, sizeof (inbox), 2, FLAG));
-            fprintf(stderr, "errn is: %s\n",strerror(errno));
-            printf("ret is: %d\n", ret);
+            //fprintf(stderr, "errn is: %s\n",strerror(errno));
+            //printf("ret is: %d\n", ret);
             if (ret == -1) {
                 printf("spiacenti, si è verificato un errore\n");
                 continue;
@@ -65,7 +66,7 @@ void alertThread(){
             }
     }
     
-    sem_post(sem);
+    
 }
 
 
