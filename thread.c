@@ -25,7 +25,10 @@ void* connection_handler(void* arg) {
 
     handler_args_t* args = (handler_args_t*) arg;
     
- 
+    int server_queue = args->server_sd;
+    
+    int msgServer = 0;
+    
     mymsg recv_message; //messaggio ricevuto dalla coda dei messaggi
     int id_coda; //id della coda di messaggi di questo thread
     int key; //chiave per la coda (vedi: msgget) è uguale al descrittore del socket
@@ -116,7 +119,18 @@ void* connection_handler(void* arg) {
         //se un client si disconnette la recv ritorna 0 => recv_bytes==0
         if (recv_bytes <= 0) {
             if (DEBUG) printf("client %d disconnesso\n", key);
+            if(!is_connect) break;
             command = 1;
+            if(recv_bytes == -2 && is_connect == 1 && key == my_channel->client_desc[0]){
+                strcpy(buf, delete_command);
+                recv_bytes = delete_command_len;
+                msgServer = 1;
+                printf("daje\n");
+            }
+            if(recv_bytes == -2 && is_connect == 0){
+                printf("daje2\n");
+                break;
+            }
             if (is_connect) {
                 if (my_channel->owner == key) {
                     strcpy(buf, delete_command);
@@ -552,21 +566,21 @@ void* connection_handler(void* arg) {
 
                 /**INIZIO SEZIONE CRITICA PER LA LISTA**/
                 if (DEBUG)printf("tutti sono usciti\n");
-
-                ret = sem_wait(sem);
-                if (ret == -1) {
-                    sem_close(sem);
-					sem_unlink(NAME_SEM);
-					sem = sem_open(NAME_SEM, O_CREAT | O_EXCL, 0666, 1);
-					if (sem == SEM_FAILED) { 
-						free(name_channel);
-						invio("spiacenti, si è verificato un errore\0", key);
-						break;
-					}
-					ret = sem_wait(sem);
+                if(!msgServer){
+                    ret = sem_wait(sem);
+                    if (ret == -1) {
+                        sem_close(sem);
+                                            sem_unlink(NAME_SEM);
+                                            sem = sem_open(NAME_SEM, O_CREAT | O_EXCL, 0666, 1);
+                                            if (sem == SEM_FAILED) { 
+                                                    free(name_channel);
+                                                    invio("spiacenti, si è verificato un errore\0", key);
+                                                    break;
+                                            }
+                                            ret = sem_wait(sem);
+                    }
                 }
-
-				logExit(1, name_channel, client_ip);
+		logExit(1, name_channel, client_ip);
                 ret = sem_close(my_named_semaphore);
                 if (ret == -1) {
                     printf("spiacenti, si è verificato un errore\n");
@@ -574,7 +588,7 @@ void* connection_handler(void* arg) {
 					invio("spiacenti, si è verificato un errore\0", key);
 					break;
                 }
-
+                
                 ret = sem_unlink(name_channel);
 
                 if (ret == -1) {
@@ -582,22 +596,23 @@ void* connection_handler(void* arg) {
                     invio("spiacenti, si è verificato un errore\0", key);
                     continue;
                 }
-                //aggiorno la lista dei canali
-                for (i = 0; i < args->channel_list->num_channels; i++) {
-                    if (strcmp(args->channel_list->name_channel[i], my_channel->name_channel) == 0) {
-                        //tolgo dalla lista il canale
-                        args->channel_list->channel[i] = args->channel_list->channel[args->channel_list->num_channels - 1];
-                        args->channel_list->channel = (channel_struct**) realloc(args->channel_list->channel, sizeof (channel_struct*) * args->channel_list->num_channels - 1);
+                if(!msgServer){
+                    //aggiorno la lista dei canali
+                    for (i = 0; i < args->channel_list->num_channels; i++) {
+                        if (strcmp(args->channel_list->name_channel[i], my_channel->name_channel) == 0) {
+                            //tolgo dalla lista il canale
+                            args->channel_list->channel[i] = args->channel_list->channel[args->channel_list->num_channels - 1];
+                            args->channel_list->channel = (channel_struct**) realloc(args->channel_list->channel, sizeof (channel_struct*) * args->channel_list->num_channels - 1);
 
-                        //tolgo dalla lista il nome
-                        free(args->channel_list->name_channel[i]);
-                        args->channel_list->name_channel[i] = args->channel_list->name_channel[args->channel_list->num_channels - 1];
-                        args->channel_list->name_channel = (char**) realloc(args->channel_list->name_channel, sizeof (char*)*args->channel_list->num_channels - 1);
-                        args->channel_list->num_channels--;
+                            //tolgo dalla lista il nome
+                            free(args->channel_list->name_channel[i]);
+                            args->channel_list->name_channel[i] = args->channel_list->name_channel[args->channel_list->num_channels - 1];
+                            args->channel_list->name_channel = (char**) realloc(args->channel_list->name_channel, sizeof (char*)*args->channel_list->num_channels - 1);
+                            args->channel_list->num_channels--;
 
+                        }
                     }
                 }
-
                 //deallocazione risorse canale
                 free(my_channel->client_desc);
                 free(my_channel->id);
@@ -611,16 +626,17 @@ void* connection_handler(void* arg) {
                 free(my_channel);
                 my_channel = NULL;
 
-
-                ret = sem_post(sem);
-                if (ret == -1) {
-                    printf("spiacenti, si è verificato un errore\n");
-					freeChannel(my_channel);
-					invio("spiacenti, si è verificato un errore\0", key);
-					break;
+                if(!msgServer){
+                    ret = sem_post(sem);
+                    if (ret == -1) {
+                        printf("spiacenti, si è verificato un errore\n");
+                                            freeChannel(my_channel);
+                                            invio("spiacenti, si è verificato un errore\0", key);
+                                            break;
+                    }
                 }
                 /**FINE SEZIONE CRITICA PER LA LISTA**/
-
+                printf("ci arrivo\n");
                 invio("canale eliminato\0", args->socket_desc);
                 is_connect = 0;
                 
@@ -773,7 +789,29 @@ void* connection_handler(void* arg) {
     if (DEBUG) fprintf(stderr, "Thread created to handle client with IP %s has completed its work, exiting...\n", client_ip);
     
     logExit(2, NULL, client_ip);
+    
+    sem_close(sem);
+    
+    if(msgServer){
+        mymsg msg;
+        msg.mtype = 2; //header del messaggio. 1:delete  2:sem_close
+        strcpy(msg.mtext, "semclose\0");
 
+        int id_coda_other = msgget(server_queue, IPC_EXCL | 0666); //prendo la coda di messaggi del proprietario...
+        if (id_coda_other == -1) {
+            printf("server_queue is %d\n", server_queue);
+            printf("coda 2 cannot open server queue, please check with the problem\n");
+            printf("eccolo: %s\n", strerror(errno));
+            return -1;
+        }
+        if (msgsnd(id_coda_other, &msg, SIZE, FLAG) == -1) { //...gli invio il messaggio
+            printf("cannot return response to the client\n");
+            return -1;
+        } else if (DEBUG)printf("invio a %d (server) of type %ld - receive %s\n", id_coda_other, msg.mtype, msg.mtext);
+            
+        my_channel = NULL;
+    }
+    
     free(args->client_addr); // do not forget to free this buffer!
     free(args);
 
