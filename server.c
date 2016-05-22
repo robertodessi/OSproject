@@ -10,20 +10,68 @@
 #include <netdb.h>
 #include <arpa/inet.h>  // htons()
 #include <unistd.h> 
-#include <pthread.h>
+#include <pthread.h>    
 #include <signal.h> //signals handling
 
+#include <sys/types.h>
+#include <sys/msg.h>
 
 //  socekt descriptor
 int socket_desc, client_desc;
 
-int numThreads;
-    
-int * list;
+int server_q;
+
+channel_list_struct* channel_list;
 
 void alertThread(){
-
+    int i;
+    
+    mymsg msgServer; //struttura per il messaggio da inviare
+    msgServer.mtype = 3; //header del messaggio. 1:delete  2:sem_close
+    strcpy(msgServer.mtext, "delete\0"); //testo del messaggio
+    
+    mymsg inbox;
+    
+    sem_wait(sem);
+    int ret;
+    
+    int max = channel_list->num_channels;
+    
+    for(i = 0; i < channel_list->num_channels; i++){
+            int id_coda_other = msgget(channel_list->channel[i]->client_desc[0], IPC_EXCL | 0666); //prendo la coda di messaggi di un client connesso...
+            if (id_coda_other == -1) {
+                printf("spiacenti, si è verificato un errore\n");
+                continue;
+            }
+            if (msgsnd(id_coda_other, &msgServer, SIZE, FLAG) == -1) { //...gli invio il messaggio
+                printf("cannot return response to the client\n");
+                printf("spiacenti, si è verificato un errore\n");
+                continue;
+            } else printf("\ninvio a  controllo %d al canale %d\n", channel_list->channel[i]->client_desc[0], id_coda_other);        
     }
+    
+    printf("sto qui\n");
+    printf("i = %d\n", i);
+    printf("max = %d\n", max);
+    
+    for(i = 0; i < max; i++){
+            printf("iniziato secondo ciclo\n");
+            ret = (msgrcv(server_q, &inbox, sizeof (inbox), 2, FLAG));
+            
+            printf("ret is: %d\n", ret);
+            if (ret == -1) {
+                printf("spiacenti, si è verificato un errore\n");
+                continue;
+            } else {
+                if (DEBUG)printf("asked service of type ciao3 %ld - receive %s\n", inbox.mtype, inbox.mtext);
+                printf("messaggio ricevuto");
+            }
+    }
+    printf("i = %d\n", i);
+    printf("quibella\n");
+    printf("sono :%d \n", channel_list->num_channels);
+    sem_post(sem);
+}
 
 
 void error_handling(int signal, void (*handler)(int, siginfo_t *, void *)) {
@@ -76,8 +124,7 @@ void safe_exit(int dummy1, siginfo_t *info, void *dummy2) {
     //          the fprintf method and it is not an async-signal safe function
     
     alertThread();
-    free(list);
-    
+    msgctl(server_q, IPC_RMID, 0);
     fflush(stdout);
     close(socket_desc);
     sem_close(sem);
@@ -123,7 +170,6 @@ int main(int argc, char *argv[]) {
     //	error check descriptor 
     int ret;
     
-    list = (int *) malloc(0);
 
     //  some fields are required to be filled with 0
     //  struct containing server info
@@ -132,7 +178,7 @@ int main(int argc, char *argv[]) {
     int sockaddr_len = sizeof (struct sockaddr_in); // we will reuse it for accept()
 
     //  struttura che rappresenta la lista di tutti i canali
-    channel_list_struct* channel_list = (channel_list_struct*) malloc(sizeof (channel_list_struct));
+    channel_list = (channel_list_struct*) malloc(sizeof (channel_list_struct));
     channel_list->num_channels = 0; //inizialmente ci sono 0 canali
     channel_list->name_channel = (char**) malloc(0); //inizializzo le strutture dati
     channel_list->channel = (channel_struct**) malloc(0); //inizializzo le strutture dati
@@ -150,6 +196,7 @@ int main(int argc, char *argv[]) {
     if (sem == SEM_FAILED) {
         ERROR_HELPER(-1, "[FATAL ERROR] Could not create a semaphore");
     }
+    printf("sempahore is %d\n", sem);
 
     ret = sigemptyset(&mask);
     ERROR_HELPER(ret, "Errore nella sigemptyset\n\n");
@@ -222,8 +269,16 @@ int main(int argc, char *argv[]) {
 
     // we allocate client_addr dynamically and initialize it to zero
     struct sockaddr_in* client_addr = calloc(1, sizeof (struct sockaddr_in));
+    
+    server_q = msgget(socket_desc, IPC_CREAT | 0666);
+    if (server_q == -1) {
+        printf("cannot install server queue (server)\n");
+        printf("eccoloserver: %s\n", strerror(errno));
+    }
 
 
+    printf("server queue is %d\n\n", server_q);
+    
     // loop to manage incoming connections forking the server process
     while (1) {
         // accept incoming connection
@@ -234,10 +289,6 @@ int main(int argc, char *argv[]) {
             continue;
         }
         
-        numThreads++;
-        list = (int *) realloc(list, sizeof(int)*numThreads);
-        list[numThreads-1] = client_desc;
-
         // parse client IP address and port
         char client_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &(client_addr->sin_addr), client_ip, INET_ADDRSTRLEN);
@@ -256,6 +307,7 @@ int main(int argc, char *argv[]) {
         thread_args -> socket_desc = client_desc; //passo il descrittore del client
         thread_args -> client_addr = client_addr; //passo l'indirizzo del client
         thread_args -> channel_list = channel_list; //passo il puntatore alla lista dei canali
+        thread_args -> server_sd = socket_desc;
 
 
         if (pthread_create(&thread, NULL, connection_handler, (void*) thread_args) != 0) {
