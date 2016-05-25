@@ -23,22 +23,26 @@ int server_q;
 
 channel_list_struct* channel_list;
 
+pthread_t* threads;
+int n_client;
+int* client_sock;
+
 void alertThread(){
     int i;
     
     mymsg msgServer; //struttura per il messaggio da inviare
     msgServer.mtype = 3; //header del messaggio. 1:delete  2:sem_close
-    strcpy(msgServer.mtext, "kill\0"); //testo del messaggio
+    strcpy(msgServer.mtext, "killthemall\0"); //testo del messaggio
     
     mymsg inbox;
     
     sem_wait(sem);
     int ret;
     
-    int max = channel_list->num_channels;
+    //int max = channel_list->num_channels;
     
-    for(i = 0; i < channel_list->num_channels; i++){
-            int id_coda_other = msgget(channel_list->channel[i]->client_desc[0], IPC_EXCL | 0666); //prendo la coda di messaggi di un client connesso...
+    for(i = 0; i < n_client; i++){
+            int id_coda_other = msgget(client_sock[i], IPC_EXCL | 0666); //prendo la coda di messaggi di un client connesso...
             if (id_coda_other == -1) {
                 printf("spiacenti, si è verificato un errore\n");
                 continue;
@@ -52,8 +56,10 @@ void alertThread(){
     
     sem_post(sem);
     
-    for(i = 0; i < max; i++){
-            printf("iniziato secondo ciclo\n");
+    for(i = 0; i < n_client; i++) pthread_join(threads[i],NULL);
+           
+           
+           /* printf("iniziato secondo ciclo\n");
             ret = (msgrcv(server_q, &inbox, sizeof (inbox), 2, FLAG));
             //fprintf(stderr, "errn is: %s\n",strerror(errno));
             //printf("ret is: %d\n", ret);
@@ -65,7 +71,7 @@ void alertThread(){
                 printf("messaggio ricevuto");
             }
     }
-    
+    */
     
 }
 
@@ -172,6 +178,10 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in server_addr = {0};
    
     int sockaddr_len = sizeof (struct sockaddr_in); // we will reuse it for accept()
+    
+    client_sock=(int*)malloc(0);
+    threads=(pthread_t*)malloc(0);
+    n_client=0;
 
     //  struttura che rappresenta la lista di tutti i canali
     channel_list = (channel_list_struct*) malloc(sizeof (channel_list_struct));
@@ -311,14 +321,20 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Can't create a new thread, error %d\n", errno);
             exit(EXIT_FAILURE);
         }
-
+		
+		n_client++;
+		threads=(pthread_t*)realloc(threads,n_client);
+		threads[n_client-1]=thread;
+		client_sock=(int*)realloc(client_sock,n_client);
+		client_sock[n_client-1]=client_desc;
+		
         if (DEBUG) fprintf(stderr, "New thread created to handle the request!\n");
         
         logMsg("New thread created to handle the request!");
         
 
         
-        pthread_detach(thread); // I won't phtread_join() on this thread
+        //pthread_detach(thread); // I won't phtread_join() on this thread
 
         // we can't just reset fields: we need a new buffer for client_addr!
         client_addr = calloc(1, sizeof (struct sockaddr_in));

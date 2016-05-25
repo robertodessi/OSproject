@@ -126,17 +126,19 @@ void* connection_handler(void* arg) {
                 msgServer=1;
                 printf("daje\n");
             }
-            if(recv_bytes == -2 && is_connect == 0){  //se arriva kill e sono in un canale e NON sono il proprietario
+            if(recv_bytes == -2 && is_connect == 1){  //se arriva kill e sono in un canale e NON sono il proprietario
 				msgServer=1;
                 printf("daje2\n");
-                break;
+                strcpy(buf, quit_command);
+                recv_bytes = quit_command_len;
+                
             }
             if(recv_bytes == -3){   //se arriva kill e non sono in nessun canale
 				msgServer=1;
                 printf("daje3\n");
                 break;
             }
-            if (is_connect) {
+            if (is_connect && is_connect==0) {
                 if (my_channel->owner == key) {
                     strcpy(buf, delete_command);
                     recv_bytes = delete_command_len;
@@ -383,14 +385,15 @@ void* connection_handler(void* arg) {
             if (DEBUG) printf("quit canale\n");
 
             command = 1;
-
+ret = sem_wait(my_named_semaphore);
+printf("!!!!!!!!!!!!\n");
             /**INIZIO SEZIONE CRITICA PER IL CANALE**/
             ret = sem_wait(my_named_semaphore);
             if (ret == -1) {
                 printf("spiacenti, si è verificato un errore\n");
 				break;
 			}
-
+printf("??????????\n");
             // controllare se nel frattempo il canale è stato chiuso
             if (leggiMSG(id_coda, &recv_message) == 0) {
                 printf("nessun messaggio\n");
@@ -445,7 +448,27 @@ void* connection_handler(void* arg) {
             if (DEBUG) printf("delete canale\n");
 
             command = 1;
-                   
+            
+            ret = sem_close(my_named_semaphore);
+                if (ret == -1) {
+                    printf("spiacenti, si è verificato un errore\n");
+					
+                }
+              printf("11111111\n");  
+                ret = sem_unlink(name_channel);
+                if (ret == -1) {
+                    printf("spiacenti, si è verificato un errore\n");
+                    
+                }
+             printf("2222222222\n");
+             printf("ret=%d\n",ret);  
+             
+         ret = sem_post(my_named_semaphore);
+            if (ret == -1) {
+                printf("spiacenti, si è verificato un errore\n");
+				break;
+			}
+                    printf("33333333\n");       
 			/**INIZIO SEZIONE CRITICA PER LA LISTA**/
 			ret = sem_wait(sem);
 			if (ret == -1) {
@@ -453,7 +476,7 @@ void* connection_handler(void* arg) {
                 break;
             }
 		
-			my_named_semaphore = sem_open(name_channel, 0); // mode is 0: sem_open is not allowed to create it!
+			//my_named_semaphore = sem_open(name_channel, 0); // mode is 0: sem_open is not allowed to create it!
 			
             /**INIZIO SEZIONE CRITICA PER IL CANALE**/
             ret = sem_wait(my_named_semaphore);
@@ -466,11 +489,11 @@ void* connection_handler(void* arg) {
             if (my_channel->owner == args->socket_desc) {
 
                 //tramite la coda di messaggi avverto tutti gli altri thread
-
+			
                 mymsg msg; //struttura per il messaggio da inviare
                 msg.mtype = 1; //header del messaggio. 1:delete  2:sem_close
-                if(msgServer) strcpy(msg.mtext, "killthemall\0"); ///citazione a "the walking dead"
-                else strcpy(msg.mtext, "delete\0"); //testo del messaggio
+                //if(msgServer) strcpy(msg.mtext, "killthemall\0"); ///citazione a "the walking dead"
+                strcpy(msg.mtext, "delete\0"); //testo del messaggio
 
                 for (i = 0; i < my_channel->dim; i++) { //inoltro del messaggio escluso se sesso
                     if (my_channel->client_desc[i] != args->socket_desc) {
@@ -721,7 +744,7 @@ void* connection_handler(void* arg) {
     
     //WARNING: decommentando questo si va in segfault (perchè???)
     //sem_close(sem);
-    
+    /*
     if(msgServer){
 		printf("qui");
         mymsg msg;
@@ -742,7 +765,7 @@ void* connection_handler(void* arg) {
             
         my_channel = NULL;
     }
-    
+    */
     free(args->client_addr); // do not forget to free this buffer!
     free(args);
 
