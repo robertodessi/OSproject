@@ -26,7 +26,7 @@ void* connection_handler(void* arg) {
     handler_args_t* args = (handler_args_t*) arg;
     
     int server_queue = args->server_sd;
-    int msgServer = 0; //flag che indica se il mainprocess ha inviato il messaggio (di tipo 3) di chiudere
+    //int msgServer = 0; //flag che indica se il mainprocess ha inviato il messaggio (di tipo 3) di chiudere
     
     mymsg recv_message; //messaggio ricevuto dalla coda dei messaggi
     int id_coda; //id della coda di messaggi di questo thread
@@ -120,18 +120,18 @@ void* connection_handler(void* arg) {
             if (DEBUG) printf("client %d disconnesso\n", key);
             if(!is_connect) break;
             command = 1;
+            if(recv_bytes == -3){   //se arriva kill e non sono in nessun canale
+				
+				printf("thread.c a\n");
+                break;
+            }
             if(recv_bytes == -3 && is_connect == 1 && key == my_channel->client_desc[0]){  //se arriva kill e sono il proprietario
                 break;
             }
             if(recv_bytes == -3 && is_connect == 1 && key != my_channel->client_desc[0]){  //se arriva kill e sono in un canale e NON sono il proprietario
 				break;
                 
-            }
-            if(recv_bytes == -3){   //se arriva kill e non sono in nessun canale
-				msgServer=1;
-                printf("daje3\n");
-                break;
-            }
+            }            
             if (recv_bytes>=-1 && is_connect) {
                 if (my_channel->owner == key) {
                     strcpy(buf, delete_command);
@@ -333,8 +333,8 @@ void* connection_handler(void* arg) {
                 int dim = ++(my_channel->dim); //aumento di 1 il numero di parteciapnti al canale
                 my_channel->client_desc = (int*) realloc(my_channel->client_desc, dim * sizeof (int));
                 my_channel->client_desc[dim - 1] = args->socket_desc; //aggiungo il nuovo membro al canale		
-                my_channel->id = (int*) realloc(my_channel->id, dim * sizeof (int));
-                my_channel->id[dim - 1] = (int) pthread_self(); 	
+               // my_channel->id = (int*) realloc(my_channel->id, dim * sizeof (int));
+                //my_channel->id[dim - 1] = (int) pthread_self(); 	
 
  				
                 ret = sem_post(my_named_semaphore);
@@ -379,15 +379,15 @@ void* connection_handler(void* arg) {
             if (DEBUG) printf("quit canale\n");
 
             command = 1;
-ret = sem_wait(my_named_semaphore);
-printf("!!!!!!!!!!!!\n");
+			ret = sem_wait(my_named_semaphore);
+
             /**INIZIO SEZIONE CRITICA PER IL CANALE**/
             ret = sem_wait(my_named_semaphore);
             if (ret == -1) {
                 printf("spiacenti, si è verificato un errore\n");
 				break;
 			}
-printf("??????????\n");
+
             // controllare se nel frattempo il canale è stato chiuso
             if (leggiMSG(id_coda, &recv_message) == 0) {
                 printf("nessun messaggio\n");
@@ -722,9 +722,9 @@ printf("??????????\n");
             break;
         }
     }
-	invio("disconnesso\0",key);
+	//invio("disconnesso\0",key);
     ret = msgctl(id_coda, IPC_RMID, 0);
- printf("ho chiuso la coda %d!!!!!! ret= %d\n",key,ret);
+	printf("ho chiuso la coda %d!!!! ret= %d\n",key,ret);
     // close socket
     ret |= close(args->socket_desc);
     if (ret == -1) {
@@ -736,33 +736,10 @@ printf("??????????\n");
     
     logExit(2, NULL, client_ip);
     
-    //WARNING: decommentando questo si va in segfault (perchè???)
-    //sem_close(sem);
-    /*
-    if(msgServer){
-		printf("qui");
-        mymsg msg;
-        msg.mtype = 2; //header del messaggio. 1:delete  2:sem_close
-        strcpy(msg.mtext, "semclose\0");
-
-        int id_coda_other = msgget(server_queue, IPC_EXCL | 0666); //prendo la coda di messaggi del proprietario...
-        if (id_coda_other == -1) {
-            printf("server_queue is %d\n", server_queue);
-            printf("coda 2 cannot open server queue, please check with the problem\n");
-            printf("eccolo: %s\n", strerror(errno));
-            pthread_exit(NULL);
-        }
-        if (msgsnd(id_coda_other, &msg, SIZE, FLAG) == -1) { //...gli invio il messaggio
-            printf("cannot return response to the client\n");
-            pthread_exit(NULL);
-        } else if (DEBUG)printf("invio a %d (server) of type %ld - receive %s\n", id_coda_other, msg.mtype, msg.mtext);
-            
-        my_channel = NULL;
-    }
-    */
+ 
     free(args->client_addr); // do not forget to free this buffer!
     free(args);
-
+printf("thread.c finito\n");
     pthread_exit(NULL);
 }
 

@@ -11,7 +11,7 @@
 typedef struct {
     int dim; //dimensione dell'array client_desc
     int* client_desc; //array dei descrittori dei vari client connessi al canale
-    int* id;  //id dei thread
+    //int* id;  //id dei thread
     char* name_channel; //nome del canale
     int owner;  //descrittore del client creatore del canale
 } channel_struct;

@@ -35,47 +35,46 @@ void alertThread(){
     strcpy(msgServer.mtext, "killthemall\0"); //testo del messaggio
     
     mymsg inbox;
-    printf("sono qui1\n");
+ 
     sem_wait(sem);
    
-     printf("sono qui2 %d\n",n_client);
-    //int max = channel_list->num_channels;
-    
-    for(i = 0; i < n_client-1; i++){
-		printf("client_sock num = %d \n",client_sock[i]);
+
+   
+ 
+    for(i = 0; i < n_client; i++){
+		
             int id_coda_other = msgget(client_sock[i], IPC_EXCL | 0666); //prendo la coda di messaggi di un client connesso...
             if (id_coda_other == -1) {
                 printf("spiacenti, si è verificato un errore\n");
                 continue;
             }
-            printf("sono qui3");
+          
             if (msgsnd(id_coda_other, &msgServer, SIZE, FLAG) == -1) { //...gli invio il messaggio
                 printf("cannot return response to the client\n");
                 printf("spiacenti, si è verificato un errore\n");
                 continue;
-            } else printf("\ninvio a  controllo %d al canale %d\n", channel_list->channel[i]->client_desc[0], id_coda_other);        
+            }      
     }
     
     sem_post(sem);
     
-    printf("bbbbbbb\n");
+  
     
-    //for(i = 0; i < n_client; i++) pthread_join(threads[i],NULL);
-           
-     printf("finito\n");      
-           /* printf("iniziato secondo ciclo\n");
-            ret = (msgrcv(server_q, &inbox, sizeof (inbox), 2, FLAG));
-            //fprintf(stderr, "errn is: %s\n",strerror(errno));
-            //printf("ret is: %d\n", ret);
-            if (ret == -1) {
-                printf("spiacenti, si è verificato un errore\n");
-                continue;
-            } else {
-                if (DEBUG)printf("asked service of type ciao3 %ld - receive %s\n", inbox.mtype, inbox.mtext);
-                printf("messaggio ricevuto");
-            }
-    }
-    */
+    for(i = 0; i < n_client; i++) pthread_join(threads[i],NULL);
+        
+    int max = channel_list->num_channels;   
+    
+    //free e unlink di tutti i canali
+    for (i=0;i<max;i++){
+		sem_t * channel_semaphore = sem_open(channel_list->channel[i]->name_channel, 0); // prendo il sem del canale
+		close(channel_semaphore); 						 //lo chiudo
+		unlink(channel_list->channel[i]->name_channel);  //lo unlinko
+		free(channel_list->channel[i]->client_desc); 	 //dealloco client_desc
+		free(channel_list->channel[i]->name_channel);	 //dealloco il nome del canale
+		//free(channel_list->channel[i]->id);				 //dealloco client_desc
+		free(channel_list->channel[i]);					//dealloco il canale
+	}
+	free(channel_list); //dealloco la lista T.T
     
 }
 

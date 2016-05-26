@@ -52,7 +52,7 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
 
         
         int temp = leggiMSG(id_coda, recv_message);
-   printf("ciaoooooooooooo");
+
         //controllo periodicamente se è arrivato qualche messaggio
         if ( temp == 1 ) {	
 			//if(strcmp(recv_message->mtext,"killthemall\0")==0) ret = msgctl(id_coda, IPC_RMID, 0);
