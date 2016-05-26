@@ -220,8 +220,8 @@ void* connection_handler(void* arg) {
             /*WARNING!! 
              * il nome del canale è ridondante!
              */
-            my_channel -> id = (int*) malloc(sizeof (int)); //allocazione dinamica
-            my_channel -> id[0] = (int) pthread_self(); 
+            //my_channel -> id = (int*) malloc(sizeof (int)); //allocazione dinamica
+            //my_channel -> id[0] = (int) pthread_self(); 
             //Warning! if a thread gets an ID with pthread_self and then it dies, the same ID is reused by new threads!
             //That is not good but it is better than all zeros
 
@@ -567,7 +567,7 @@ void* connection_handler(void* arg) {
                
                 //deallocazione risorse canale
                 free(my_channel->client_desc);
-                free(my_channel->id);
+                //free(my_channel->id);
                 //free(my_channel->name_channel);  NON decommentare altrimenti si va in errore
 
                 /* ho voluto lasciarlo per essere sicuro di non fare lo stesso errore

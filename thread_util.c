@@ -171,8 +171,8 @@ void printList(channel_list_struct* list) {
 void printChannel(channel_struct* channel) {
     printf("\nCHANNEL\n");
     printf("name: %s\n", channel->name_channel);
-    printf("id: \n");
-    for (int i = 0; i < channel->dim; i++) printf("%d, ", channel->id[i]);
+   // printf("id: \n");
+    //for (int i = 0; i < channel->dim; i++) printf("%d, ", channel->id[i]);
     printf("\n");
     printf("owner: %d\n", channel->owner);
     printf("dimension: %d\n", channel->dim);
