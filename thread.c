@@ -114,23 +114,17 @@ void* connection_handler(void* arg) {
 
         // read message from client
         recv_bytes = ricevi(buf, buf_len, args->socket_desc, id_coda, &recv_message, &is_connect, my_named_semaphore, my_channel);
-        //printf("ricevuti = %d\n", recv_bytes);
+        printf("ricevuti = %d\n", recv_bytes);
         //se un client si disconnette la recv ritorna 0 => recv_bytes==0
         if (recv_bytes <= 0) {
             if (DEBUG) printf("client %d disconnesso\n", key);
             if(!is_connect) break;
             command = 1;
-            if(recv_bytes == -2 && is_connect == 1 && key == my_channel->client_desc[0]){  //se arriva kill e sono il proprietario
-                strcpy(buf, delete_command);
-                recv_bytes = delete_command_len;
-                msgServer=1;
-                printf("daje\n");
+            if(recv_bytes == -3 && is_connect == 1 && key == my_channel->client_desc[0]){  //se arriva kill e sono il proprietario
+                break;
             }
-            if(recv_bytes == -2 && is_connect == 1){  //se arriva kill e sono in un canale e NON sono il proprietario
-				msgServer=1;
-                printf("daje2\n");
-                strcpy(buf, quit_command);
-                recv_bytes = quit_command_len;
+            if(recv_bytes == -3 && is_connect == 1 && key != my_channel->client_desc[0]){  //se arriva kill e sono in un canale e NON sono il proprietario
+				break;
                 
             }
             if(recv_bytes == -3){   //se arriva kill e non sono in nessun canale
@@ -138,7 +132,7 @@ void* connection_handler(void* arg) {
                 printf("daje3\n");
                 break;
             }
-            if (is_connect && is_connect==0) {
+            if (recv_bytes>=-1 && is_connect) {
                 if (my_channel->owner == key) {
                     strcpy(buf, delete_command);
                     recv_bytes = delete_command_len;
@@ -728,7 +722,7 @@ printf("??????????\n");
             break;
         }
     }
-	
+	invio("disconnesso\0",key);
     ret = msgctl(id_coda, IPC_RMID, 0);
  printf("ho chiuso la coda %d!!!!!! ret= %d\n",key,ret);
     // close socket

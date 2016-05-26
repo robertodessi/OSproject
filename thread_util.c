@@ -52,16 +52,16 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
 
         
         int temp = leggiMSG(id_coda, recv_message);
-        
+   printf("ciaoooooooooooo");
         //controllo periodicamente se è arrivato qualche messaggio
         if ( temp == 1 ) {	
-			if(strcmp(recv_message->mtext,"killthemall\0")==0) ret = msgctl(id_coda, IPC_RMID, 0);
-			printf("sono %d ricevuto msg tipo %d testo %s\n", mitt, recv_message->mtype, recv_message->mtext);	
+			//if(strcmp(recv_message->mtext,"killthemall\0")==0) ret = msgctl(id_coda, IPC_RMID, 0);
+			//printf("sono %d ricevuto msg tipo %d testo %s\n", mitt, recv_message->mtype, recv_message->mtext);	
 			esci(is_connect, my_named_semaphore, my_channel, mitt);
-			if(strcmp(recv_message->mtext,"killthemall\0")==0) return -3; //se il proprietario mi dice che devo uccidere il thread ritorna -3
+						//if(strcmp(recv_message->mtext,"killthemall\0")==0) return -3; //se il proprietario mi dice che devo uccidere il thread ritorna -3
         }else if ( temp == 3) {  
-			printf("sono %d ricevuto msg tipo %d testo %s\n", mitt,recv_message->mtype, recv_message->mtext);      
-            return -2;   //se il mainprocess invia un messaggio di tipo 3  ritorna -2
+			//printf("sono %d ricevuto msg tipo %d testo %s\n", mitt,recv_message->mtype, recv_message->mtext);      
+            return -3;   //se il mainprocess invia un messaggio di tipo 3  ritorna -2
         }
         
         end=time(NULL);

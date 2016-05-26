@@ -28,25 +28,27 @@ int n_client;
 int* client_sock;
 
 void alertThread(){
-    int i;
+    int i,ret;
     
     mymsg msgServer; //struttura per il messaggio da inviare
     msgServer.mtype = 3; //header del messaggio. 1:delete  2:sem_close
     strcpy(msgServer.mtext, "killthemall\0"); //testo del messaggio
     
     mymsg inbox;
-    
+    printf("sono qui1\n");
     sem_wait(sem);
-    int ret;
-    
+   
+     printf("sono qui2 %d\n",n_client);
     //int max = channel_list->num_channels;
     
-    for(i = 0; i < n_client; i++){
+    for(i = 0; i < n_client-1; i++){
+		printf("client_sock num = %d \n",client_sock[i]);
             int id_coda_other = msgget(client_sock[i], IPC_EXCL | 0666); //prendo la coda di messaggi di un client connesso...
             if (id_coda_other == -1) {
                 printf("spiacenti, si è verificato un errore\n");
                 continue;
             }
+            printf("sono qui3");
             if (msgsnd(id_coda_other, &msgServer, SIZE, FLAG) == -1) { //...gli invio il messaggio
                 printf("cannot return response to the client\n");
                 printf("spiacenti, si è verificato un errore\n");
@@ -56,9 +58,11 @@ void alertThread(){
     
     sem_post(sem);
     
-    for(i = 0; i < n_client; i++) pthread_join(threads[i],NULL);
+    printf("bbbbbbb\n");
+    
+    //for(i = 0; i < n_client; i++) pthread_join(threads[i],NULL);
            
-           
+     printf("finito\n");      
            /* printf("iniziato secondo ciclo\n");
             ret = (msgrcv(server_q, &inbox, sizeof (inbox), 2, FLAG));
             //fprintf(stderr, "errn is: %s\n",strerror(errno));
