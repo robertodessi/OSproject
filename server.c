@@ -45,13 +45,13 @@ void alertThread(){
 		
             int id_coda_other = msgget(client_sock[i], IPC_EXCL | 0666); //prendo la coda di messaggi di un client connesso...
             if (id_coda_other == -1) {
-                printf("spiacenti, si è verificato un errore\n");
+                printf("server.c msgget spiacenti, si è verificato un errore\n");
                 continue;
             }
           
             if (msgsnd(id_coda_other, &msgServer, SIZE, FLAG) == -1) { //...gli invio il messaggio
                 printf("cannot return response to the client\n");
-                printf("spiacenti, si è verificato un errore\n");
+                printf("server.c msgsend spiacenti, si è verificato un errore\n");
                 continue;
             }      
     }

@@ -379,8 +379,7 @@ void* connection_handler(void* arg) {
             if (DEBUG) printf("quit canale\n");
 
             command = 1;
-			ret = sem_wait(my_named_semaphore);
-
+			
             /**INIZIO SEZIONE CRITICA PER IL CANALE**/
             ret = sem_wait(my_named_semaphore);
             if (ret == -1) {
@@ -443,26 +442,7 @@ void* connection_handler(void* arg) {
 
             command = 1;
             
-            ret = sem_close(my_named_semaphore);
-                if (ret == -1) {
-                    printf("spiacenti, si è verificato un errore\n");
-					
-                }
-              printf("11111111\n");  
-                ret = sem_unlink(name_channel);
-                if (ret == -1) {
-                    printf("spiacenti, si è verificato un errore\n");
-                    
-                }
-             printf("2222222222\n");
-             printf("ret=%d\n",ret);  
-             
-         ret = sem_post(my_named_semaphore);
-            if (ret == -1) {
-                printf("spiacenti, si è verificato un errore\n");
-				break;
-			}
-                    printf("33333333\n");       
+                         
 			/**INIZIO SEZIONE CRITICA PER LA LISTA**/
 			ret = sem_wait(sem);
 			if (ret == -1) {
@@ -478,7 +458,7 @@ void* connection_handler(void* arg) {
                 printf("spiacenti, si è verificato un errore\n");
                 break;
             }
-            
+           
             //solo il proprietario può eliminare il canale
             if (my_channel->owner == args->socket_desc) {
 
@@ -513,7 +493,7 @@ void* connection_handler(void* arg) {
                     break;
                 }
                 /**FINE SEZIONE CRITICA PER IL CANALE**/
-
+ 
                 //ora attendo la conferma che tutti abbiano fatto la sem_close
                 //utilizzo il tipo 2 per i messaggi di sem_close
                 //aspetto la conferma da tutti (tranne se stesso)
@@ -564,7 +544,7 @@ void* connection_handler(void* arg) {
 
 					}
 				}
-               
+                   
                 //deallocazione risorse canale
                 free(my_channel->client_desc);
                 //free(my_channel->id);
@@ -738,7 +718,8 @@ void* connection_handler(void* arg) {
     
  
     free(args->client_addr); // do not forget to free this buffer!
-    free(args);
+    free(args);    
+    
 printf("thread.c finito\n");
     pthread_exit(NULL);
 }
