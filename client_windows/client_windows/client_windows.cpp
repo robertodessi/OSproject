@@ -33,15 +33,19 @@ struct	  hostent *he;
 
 
 
-int  myhandler(int event) {
-	printf("received CTRL+C\n");
-	if (szAddress!=NULL)	free(szAddress);
-	if (szPort != NULL)		free(szPort);
-	if (endptr != NULL)		free(endptr);	
-	ExitProcess(0);
-}
 
 int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort);
+
+void convertitoreUW(char* n);
+
+
+int  myhandler(int event) {
+	printf("received CTRL+C\n");
+	//if (szAddress != NULL && *szAddress!=NULL)	free(szAddress);
+	//if (szPort != NULL && *szPort!=NULL)		free(szPort);
+	if (endptr != NULL && *endptr!=NULL)		free(endptr);
+	exit(0);
+}
 
 void* Ricevi(int socket_desc){
 	unsigned int sum = 0;
@@ -116,13 +120,14 @@ int main(int argc, char *argv[])
 
 	int ret;
 
+	printf("ciao\n");
 
 	SetConsoleCtrlHandler((PHANDLER_ROUTINE)myhandler, 1);
 
 	/*  Get command line arguments  */
 
 	//ParseCmdLine(argc, argv, &szAddress, &szPort);
-	szAddress = "192.168.1.73";
+	szAddress = "192.168.1.57";
 	szPort = "2016";
 
 	/*  Set the remote port  */
@@ -131,18 +136,19 @@ int main(int argc, char *argv[])
 	if (*endptr){
 		ERROR_HELPER(-1, "client: porta non riconosciuta");
 	}
-
+	printf("2\n");
 
 	if (WSAStartup(MAKEWORD(1, 1), &wsaData) != 0){
 		ERROR_HELPER(-1, "errore in WSAStartup()");
 	}
 
+	printf("3\n");
 	/*  Create the listening socket  */
 
 	if ((socket_desc = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET){
 		ERROR_HELPER(-1, "client: errore durante la creazione della socket.");
 	}
-
+	printf("4\n");
 
 	/*  Set all bytes in socket address structure to
 	zero, and fill in the relevant data members   */
@@ -161,10 +167,10 @@ int main(int argc, char *argv[])
 		nRemoteAddr = *((u_long *)he->h_addr_list[0]);
 	}
 	servaddr.sin_addr.s_addr = nRemoteAddr;
-
+	printf("5\n");
 
 	/*  connect() to the remote echo server  */
-	if (ret=connect(socket_desc, (struct sockaddr *) &servaddr, sizeof(servaddr)) == SOCKET_ERROR){
+	if (connect(socket_desc, (struct sockaddr *) &servaddr, sizeof(servaddr)) == SOCKET_ERROR){
 		//printf("client: errore durante la connect.\n");
 		ERROR_HELPER(-1, "errore connect");
 	}
@@ -229,7 +235,7 @@ int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort){
 }
 
 //converte le lettere da unix a windows
-int convertitoreUW(char* n) {	
+void convertitoreUW(char* n) {	
 	if (*n == -61 && *(n + 1) == -87) { //é
 		*n = -126;
 		*(n + 1) = ' ';
