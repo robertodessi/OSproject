@@ -23,9 +23,6 @@ int server_q;
 
 channel_list_struct* channel_list;
 
-pthread_t* threads;
-int n_client;
-int* client_sock;
 
 void alertThread(){
     int i,ret;
@@ -325,11 +322,11 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
 		
-		n_client++;
-		threads=(pthread_t*)realloc(threads,n_client);
-		threads[n_client-1]=thread;
-		client_sock=(int*)realloc(client_sock,n_client);
-		client_sock[n_client-1]=client_desc;
+		//n_client++;
+		//threads=(pthread_t*)realloc(threads,n_client);
+		//threads[n_client-1]=thread;
+		//client_sock=(int*)realloc(client_sock,n_client);
+		//client_sock[n_client-1]=client_desc;
 		
         if (DEBUG) fprintf(stderr, "New thread created to handle the request!\n");
         

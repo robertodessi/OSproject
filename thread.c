@@ -43,6 +43,7 @@ void* connection_handler(void* arg) {
 
     int command = 0; //flag che indica se il client ha inviato un comando oppure no
     int crash = 0; //flag che indica se un client si è disconnesso imrovvisamente
+    int msgServer = 0; //flag che indica se il main ha spedito il messaggio di kill
 
     is_connect = 0;
     my_channel = NULL;
@@ -104,7 +105,16 @@ void* connection_handler(void* arg) {
             pthread_exit(NULL);
         }
     }
-
+	
+	ret=sem_wait(sem);
+	if(ret==-1) pthread_exit(NULL);
+	n_client++;
+	threads=(pthread_t*)realloc(threads,n_client);
+	threads[n_client-1]=pthread_self();
+	client_sock=(int*)realloc(client_sock,n_client);
+	client_sock[n_client-1]=args->socket_desc;
+	ret=sem_post(sem);
+	if(ret==-1) pthread_exit(NULL);
     //if (DEBUG) printf("\tla mia coda: %d\n", id_coda);
    
     while (1) {
@@ -120,15 +130,17 @@ void* connection_handler(void* arg) {
             if (DEBUG) printf("client %d disconnesso\n", key);
             if(!is_connect) break;
             command = 1;
-            if(recv_bytes == -3){   //se arriva kill e non sono in nessun canale
-				
+            if(recv_bytes == -3){   //se arriva kill e non sono in nessun canale				
 				printf("thread.c a\n");
+				msgServer=1;
                 break;
             }
             if(recv_bytes == -3 && is_connect == 1 && key == my_channel->client_desc[0]){  //se arriva kill e sono il proprietario
+				msgServer=1;
                 break;
             }
             if(recv_bytes == -3 && is_connect == 1 && key != my_channel->client_desc[0]){  //se arriva kill e sono in un canale e NON sono il proprietario
+				msgServer=1;
 				break;
                 
             }            
@@ -702,6 +714,22 @@ void* connection_handler(void* arg) {
             break;
         }
     }
+    
+    if(!msgServer){
+		ret=sem_wait(sem);
+		if(ret==-1) pthread_exit(NULL);
+		//tolgo dalla lista il thread e il descrittore
+		for(i=0;i<n_client;i++) if(threads[i]==pthread_self()) break;  //trovo l'indice i
+		threads[i]= threads[n_client-1]; 
+		threads=(pthread_t*)realloc(threads,n_client-1);
+		client_sock[i]=client_sock[n_client-1];	
+		client_sock=(int*)realloc(client_sock,n_client-1);
+		n_client--;
+		
+		ret=sem_post(sem);
+		if(ret==-1) pthread_exit(NULL);
+	}
+    
 	//invio("disconnesso\0",key);
     ret = msgctl(id_coda, IPC_RMID, 0);
 	printf("ho chiuso la coda %d!!!! ret= %d\n",key,ret);
@@ -720,7 +748,7 @@ void* connection_handler(void* arg) {
     free(args->client_addr); // do not forget to free this buffer!
     free(args);    
     
-printf("thread.c finito\n");
+	printf("thread.c finito\n");
     pthread_exit(NULL);
 }
 

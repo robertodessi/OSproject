@@ -36,5 +36,10 @@
 //semaforo per channle_list_struct
 sem_t* sem;
 
+pthread_t* threads;
+int n_client;
+int* client_sock;
+
+
 #endif
 
