@@ -83,7 +83,29 @@ void* connection_handler(void* arg) {
     inet_ntop(AF_INET, &(args->client_addr->sin_addr), client_ip, INET_ADDRSTRLEN);
     //uint16_t client_port = ntohs(args->client_addr->sin_port); // port number is an unsigned short
 
-    key = args->socket_desc;
+	key = args->socket_desc;
+	
+	if(n_client+1 > MAX_CLIENT){
+		invio("limite client raggiunto\0",key);
+		// close socket
+		ret = close(args->socket_desc);
+		if (ret == -1) {
+			printf("spiacenti, si è verificato un errore\n");
+			invio("spiacenti, si è verificato un errore\0", key);
+		}
+
+		if (DEBUG) fprintf(stderr, "Thread created to handle client with IP %s has completed its work, exiting...\n", client_ip);
+		
+		logExit(2, NULL, client_ip);
+		
+	 
+		free(args->client_addr); // do not forget to free this buffer!
+		free(args);    
+		
+		printf("thread.c finito\n");
+		pthread_exit(NULL);
+	}
+    
 
     id_coda = msgget(key, IPC_CREAT | IPC_EXCL | 0666);
     if (id_coda == -1) {
@@ -105,17 +127,25 @@ void* connection_handler(void* arg) {
             pthread_exit(NULL);
         }
     }
+    
 	
 	ret=sem_wait(sem);
 	if(ret==-1) pthread_exit(NULL);
 	n_client++;
-	threads=(pthread_t*)realloc(threads,n_client);
+
+	//threads=(pthread_t*)realloc(threads,n_client);
+
 	threads[n_client-1]=pthread_self();
-	client_sock=(int*)realloc(client_sock,n_client);
-	client_sock[n_client-1]=args->socket_desc;
+	
+	//client_sock=(int*)realloc(client_sock,n_client);
+
+	client_sock[n_client-1]=(int)(args->socket_desc);
+
 	ret=sem_post(sem);
 	if(ret==-1) pthread_exit(NULL);
     //if (DEBUG) printf("\tla mia coda: %d\n", id_coda);
+    
+    printf("fine\n");
    
     while (1) {
         if (DEBUG) printList(args->channel_list);
@@ -192,7 +222,18 @@ void* connection_handler(void* arg) {
                 printf("error sem_wait");
                 break;
             }
-
+			
+			if(args->channel_list->num_channels >= MAX_CHANNEL){
+				invio("limite canali raggiunto\0",key);
+				ret = sem_post(sem);
+				if (ret == -1) ret = sem_post(sem); //retry
+				if (ret == -1) { //if another error occurr 
+					printf("spiacenti, si è verificato un errore\n");
+					break;
+				}
+				continue;
+			}
+			
             //channel_list = *(args->channel_list); //mi salvo la channel_list_struct (per comodità) 
 
             int i = 0;
@@ -721,9 +762,9 @@ void* connection_handler(void* arg) {
 		//tolgo dalla lista il thread e il descrittore
 		for(i=0;i<n_client;i++) if(threads[i]==pthread_self()) break;  //trovo l'indice i
 		threads[i]= threads[n_client-1]; 
-		threads=(pthread_t*)realloc(threads,n_client-1);
+		//threads=(pthread_t*)realloc(threads,n_client-1);
 		client_sock[i]=client_sock[n_client-1];	
-		client_sock=(int*)realloc(client_sock,n_client-1);
+		//client_sock=(int*)realloc(client_sock,n_client-1);
 		n_client--;
 		
 		ret=sem_post(sem);

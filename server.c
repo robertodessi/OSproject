@@ -25,22 +25,28 @@ channel_list_struct* channel_list;
 
 
 void alertThread(){
-    int i;
+    int i,ret;
     
     mymsg msgServer; //struttura per il messaggio da inviare
     msgServer.mtype = 3; //header del messaggio. 1:delete  2:sem_close
     strcpy(msgServer.mtext, "killthemall\0"); //testo del messaggio
     
     //mymsg inbox;
+    
+     
  
-    sem_wait(sem);
+    ret=sem_wait(sem);
+    if(ret==-1){
+		printf("errore\n");
+	} 
    
 
-   
+ 
  
     for(i = 0; i < n_client; i++){
-		
+			
             int id_coda_other = msgget(client_sock[i], IPC_EXCL | 0666); //prendo la coda di messaggi di un client connesso...
+      
             if (id_coda_other == -1) {
                 printf("server.c msgget spiacenti, si è verificato un errore\n");
                 continue;
@@ -50,11 +56,15 @@ void alertThread(){
                 printf("cannot return response to the client\n");
                 printf("server.c msgsend spiacenti, si è verificato un errore\n");
                 continue;
-            }      
+            } 
+            
     }
-    
-    sem_post(sem);
-    
+   
+    ret=sem_post(sem);
+    if(ret==-1){
+		printf("errorepost\n");
+	} 
+	
   
     
     for(i = 0; i < n_client; i++) pthread_join(threads[i],NULL);
@@ -87,7 +97,7 @@ void error_handling(int signal, void (*handler)(int, siginfo_t *, void *)) {
 }
 
 void safe_exit(int dummy1, siginfo_t *info, void *dummy2) {
-    
+   
     int signo = (int) info->si_signo;
     char * signame;
     switch (signo) {
@@ -179,8 +189,8 @@ int main(int argc, char *argv[]) {
    
     int sockaddr_len = sizeof (struct sockaddr_in); // we will reuse it for accept()
     
-    client_sock=(int*)malloc(0);
-    threads=(pthread_t*)malloc(0);
+    //client_sock=NULL;
+    //threads=NULL;
     n_client=0;
 
     //  struttura che rappresenta la lista di tutti i canali

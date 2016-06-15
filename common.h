@@ -30,15 +30,17 @@
 #define QUIT_COMMAND    "/quit"
 #define DELETE_COMMAND  "/delete"
 #define SERVER_PORT     2016
-#define NAME_SEM "common_sem"
-#define MINUTES 10
+#define NAME_SEM 		"common_sem"
+#define MINUTES 		10
+#define MAX_CLIENT 		10
+#define MAX_CHANNEL 	5
 
 //semaforo per channle_list_struct
 sem_t* sem;
 
-pthread_t* threads;
+pthread_t threads[MAX_CLIENT];
 int n_client;
-int* client_sock;
+int client_sock[MAX_CLIENT];
 
 
 #endif

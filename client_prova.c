@@ -37,6 +37,7 @@ void* invia(void* arg) {
         
         while ((ret = send(args->desc, buf, buf_len, 0)) < 0) {
             if (errno == EINTR) continue;
+            if(ret==0) exit(0);
             ERROR_HELPER(-1, "Cannot write to the socket");
         }
  
@@ -59,7 +60,7 @@ void* ricevi(void* arg) {
             if (ret < 0 && errno == EINTR) continue;
             //want to silnce again
             if (ret < 0) return (void*) sum; //error: return -1
-
+			if(ret==0) exit(0);
             recv_bytes += ret;
             if (recv_bytes > 0 && msg_recv[recv_bytes - 1] == '\0') {
                 flag = 0;
