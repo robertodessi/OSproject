@@ -37,8 +37,8 @@ void alertThread(){
  
     ret=sem_wait(sem);
     if(ret==-1){
-		printf("errore\n");
-	} 
+	if(DEBUG) printf("errore\n");
+    } 
    
 
  
@@ -48,13 +48,13 @@ void alertThread(){
             int id_coda_other = msgget(client_sock[i], IPC_EXCL | 0666); //prendo la coda di messaggi di un client connesso...
       
             if (id_coda_other == -1) {
-                printf("server.c msgget spiacenti, si è verificato un errore\n");
+                if(DEBUG) printf("server.c msgget spiacenti, si è verificato un errore\n");
                 continue;
             }
           
             if (msgsnd(id_coda_other, &msgServer, SIZE, FLAG) == -1) { //...gli invio il messaggio
-                printf("cannot return response to the client\n");
-                printf("server.c msgsend spiacenti, si è verificato un errore\n");
+                if(DEBUG) printf("cannot return response to the client\n");
+                if(DEBUG) printf("server.c msgsend spiacenti, si è verificato un errore\n");
                 continue;
             } 
             
@@ -62,8 +62,8 @@ void alertThread(){
    
     ret=sem_post(sem);
     if(ret==-1){
-		printf("errorepost\n");
-	} 
+        if(DEBUG) printf("errorepost\n");
+    } 
 	
   
     
@@ -91,7 +91,7 @@ void error_handling(int signal, void (*handler)(int, siginfo_t *, void *)) {
     act.sa_sigaction = handler;
     act.sa_flags = SA_SIGINFO;
     if (sigaction(signal, &act, NULL) == -1) {
-        printf("Errore Sigaction\n");
+        if(DEBUG) printf("Errore Sigaction\n");
         exit(0);
     }
 }
