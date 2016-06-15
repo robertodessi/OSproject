@@ -25,13 +25,13 @@ channel_list_struct* channel_list;
 
 
 void alertThread(){
-    int i,ret;
+    int i;
     
     mymsg msgServer; //struttura per il messaggio da inviare
     msgServer.mtype = 3; //header del messaggio. 1:delete  2:sem_close
     strcpy(msgServer.mtext, "killthemall\0"); //testo del messaggio
     
-    mymsg inbox;
+    //mymsg inbox;
  
     sem_wait(sem);
    
@@ -64,8 +64,8 @@ void alertThread(){
     //free e unlink di tutti i canali
     for (i=0;i<max;i++){
 		sem_t * channel_semaphore = sem_open(channel_list->channel[i]->name_channel, 0); // prendo il sem del canale
-		close(channel_semaphore); 						 //lo chiudo
-		unlink(channel_list->channel[i]->name_channel);  //lo unlinko
+		sem_close(channel_semaphore); 						 //lo chiudo
+		sem_unlink(channel_list->channel[i]->name_channel);  //lo unlinko
 		free(channel_list->channel[i]->client_desc); 	 //dealloco client_desc
 		free(channel_list->channel[i]->name_channel);	 //dealloco il nome del canale
 		//free(channel_list->channel[i]->id);				 //dealloco client_desc
@@ -138,7 +138,7 @@ void safe_exit(int dummy1, siginfo_t *info, void *dummy2) {
 
 void gestione_sigsegv(int dummy1, siginfo_t *info, void *dummy2) {
     unsigned int address;
-    address = (unsigned int) info->si_addr;
+    address = *(unsigned int*) &(info->si_addr);
     if(DEBUG) printf("segfault occurred (address is %x)\n", address);
     logSeg(address);
     
@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
     if (sem == SEM_FAILED) {
         ERROR_HELPER(-1, "[FATAL ERROR] Could not create a semaphore");
     }
-    printf("sempahore is %d\n", sem);
+    //printf("sempahore is %d\n", sem);
 
     ret = sigemptyset(&mask);
     ERROR_HELPER(ret, "Errore nella sigemptyset\n\n");

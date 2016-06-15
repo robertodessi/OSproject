@@ -25,7 +25,7 @@ void* connection_handler(void* arg) {
 
     handler_args_t* args = (handler_args_t*) arg;
     
-    int server_queue = args->server_sd;
+    //int server_queue = args->server_sd;
     //int msgServer = 0; //flag che indica se il mainprocess ha inviato il messaggio (di tipo 3) di chiudere
     
     mymsg recv_message; //messaggio ricevuto dalla coda dei messaggi
@@ -637,8 +637,8 @@ void* connection_handler(void* arg) {
             strncat(names_to_send, "\n", 2);
 
             for (i = 1; i < length; i++) {
-
-                strncat(names_to_send, args->channel_list->name_channel[i], sizeof (args->channel_list->name_channel[i]));
+				int l=sizeof (args->channel_list->name_channel[i]);
+                strncat(names_to_send, args->channel_list->name_channel[i], l);
                 strncat(names_to_send, "\n", 2);
 
             }

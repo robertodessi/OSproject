@@ -140,7 +140,7 @@ int esci(int* is_connect, sem_t* my_named_semaphore, channel_struct* my_channel,
 		printf("cannot return response to the client\n");
 		return -1;
 	} 
-	if (DEBUG)printf("sono %d ricevuto msg tipo %d testo %s\n", client_desc,msg.mtype,msg.mtext);
+	//if (DEBUG)printf("sono %d ricevuto msg tipo %d testo %s\n", client_desc,msg.mtype,msg.mtext);
 
 	my_channel = NULL;
     invio("sei stato disconnesso dal canale\0", client_desc); //avverto il client che è stato disconnesso dal canale
