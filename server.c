@@ -1,6 +1,7 @@
 #include "common.h"
 #include "log.h"
 #include "thread.h"
+#include "console_thread.h"
 
 
 #include <stdio.h>//printf
@@ -18,8 +19,9 @@
 
 //  socekt descriptor
 int socket_desc, client_desc;
-
 int server_q;
+
+struct sockaddr_in* client_addr;
 
 channel_list_struct* channel_list;
 
@@ -141,6 +143,7 @@ void safe_exit(int dummy1, siginfo_t *info, void *dummy2) {
     close(socket_desc);
     sem_close(sem);
     sem_unlink(NAME_SEM);
+    free(client_addr);
 
     exit(0);
 }
@@ -158,6 +161,7 @@ void gestione_sigsegv(int dummy1, siginfo_t *info, void *dummy2) {
     close(socket_desc);
     sem_close(sem);
     sem_unlink(NAME_SEM);
+    free(client_addr);
 
     exit(0);
 }
@@ -189,6 +193,8 @@ int main(int argc, char *argv[]) {
    
     int sockaddr_len = sizeof (struct sockaddr_in); // we will reuse it for accept()
     
+    max_client=MAX_CLIENT;
+    max_channel=MAX_CHANNEL;
     //client_sock=NULL;
     //threads=NULL;
     n_client=0;
@@ -284,7 +290,7 @@ int main(int argc, char *argv[]) {
     ERROR_HELPER(ret, "Cannot listen on socket");
 
     // we allocate client_addr dynamically and initialize it to zero
-    struct sockaddr_in* client_addr = calloc(1, sizeof (struct sockaddr_in));
+    client_addr = calloc(1, sizeof (struct sockaddr_in));
     
     server_q = msgget(socket_desc, IPC_CREAT | 0666);
     if (server_q == -1) {
@@ -294,6 +300,16 @@ int main(int argc, char *argv[]) {
 
 
     printf("server queue is %d\n\n", server_q);
+    
+    pthread_t pconsole;
+    
+    if (pthread_create(&pconsole, NULL, console, (void*) channel_list) != 0) {
+            logError("Can't create a console thread", errno);
+            fprintf(stderr, "Can't create a new thread, error %d\n", errno);
+            exit(EXIT_FAILURE);
+    }
+    
+    
     
     // loop to manage incoming connections forking the server process
     while (1) {
@@ -316,8 +332,7 @@ int main(int argc, char *argv[]) {
 
         //  creo il thread che gestirà il client da ora in avanti
         pthread_t thread;
-		
-        
+                
         // put arguments for the new thread into a buffer
         handler_args_t * thread_args = (handler_args_t*) malloc(sizeof (handler_args_t));
         thread_args -> socket_desc = client_desc; //passo il descrittore del client

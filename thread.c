@@ -85,7 +85,7 @@ void* connection_handler(void* arg) {
 
 	key = args->socket_desc;
 	
-	if(n_client+1 > MAX_CLIENT){
+	if(n_client+1 > max_client){
 		invio("limite client raggiunto\0",key);
 		// close socket
 		ret = close(args->socket_desc);
@@ -223,7 +223,7 @@ void* connection_handler(void* arg) {
                 break;
             }
 			
-			if(args->channel_list->num_channels >= MAX_CHANNEL){
+			if(args->channel_list->num_channels >= max_channel){
 				invio("limite canali raggiunto\0",key);
 				ret = sem_post(sem);
 				if (ret == -1) ret = sem_post(sem); //retry

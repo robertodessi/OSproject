@@ -41,6 +41,8 @@ sem_t* sem;
 pthread_t threads[MAX_CLIENT];
 int n_client;
 int client_sock[MAX_CLIENT];
+int max_client;
+int max_channel;
 
 
 #endif
