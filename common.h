@@ -34,6 +34,7 @@
 #define MINUTES 		10
 #define MAX_CLIENT 		10
 #define MAX_CHANNEL 	5
+#define MAX_BYTES	150
 
 //semaforo per channle_list_struct
 sem_t* sem;

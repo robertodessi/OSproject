@@ -84,7 +84,7 @@ int ricevi(char* buf, size_t buf_len, int mitt, int id_coda, mymsg* recv_message
             if (ret < 0 && errno == EINTR) continue;
             if (ret < 0) return -1; //error: return -1
             recv_bytes += ret;
-            if (recv_bytes > 0 && buf[recv_bytes - 1] == '\0') {
+            if (recv_bytes > 0 && (buf[recv_bytes - 1] == '\0' || recv_bytes>MAX_BYTES)) {
                 flag = 0;
             }
             if (recv_bytes == 0)break;
